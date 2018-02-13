@@ -2,21 +2,7 @@ use std::fmt;
 
 
 fn main() {
-    let dimensions = Vector2{x: 16, y: 16};
-    let mut population_grid = PopulationGrid::new(dimensions);
-    let zone_v2 = Vector2{x: 15, y: 15};
-    let zone = population_grid.get_zone(&zone_v2);
-    println!("{:?}", population_grid);
-    match zone {
-        Some(pop) => {
-            println!("Saw size: {}", pop);
-        },
-        None => {
-            println!("That is not a valid location!!");
-        
-        },
-    }
-
+    println!("Starting systems ...");
 }
 
 
@@ -68,6 +54,18 @@ impl fmt::Debug for PopulationGrid {
         }
         Ok(())
     }
+}
+
+struct ResidentialZone {
+    name: String,
+}
+
+struct CommercialZone {
+    name: String,
+}
+
+struct IndustrialZone {
+    name: String,
 }
 
 #[cfg(test)]
