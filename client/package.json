@@ -1,22 +1,24 @@
 {
-  "name": "electron-quick-start",
+  "name": "SimpleCity-frontend",
   "version": "1.0.0",
-  "description": "A minimal Electron application",
-  "main": "main.js",
+  "description": "To re-create and simplify SimCity",
+  "main": "build/main.js",
   "scripts": {
+    "prebuild": "rm -rf build",
+    "build": "tsc",
+    "prestart": "npm install && npm run build",
     "start": "electron ."
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/non-player-games/SimpleCity",
   "keywords": [
     "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
+    "SimCity"
   ],
-  "author": "GitHub",
-  "license": "CC0-1.0",
+  "author": "Eric Liao <rcliao01@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
-    "electron": "~1.7.8"
-  }
+    "electron": "~1.7.8",
+    "typescript": "^2.7.1"
+  },
+  "dependencies": {}
 }
