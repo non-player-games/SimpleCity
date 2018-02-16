@@ -1,0 +1,29 @@
+/* Define fonts */
+@font-face {
+    font-family: 'Inconsolata';
+    src: url('fonts/Inconsolata-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Merriweather';
+    src: url('fonts/Merriweather-Light.ttf') format('truetype');
+}
+
+/* Basic Typography */
+html {
+    font-size: 10px;
+    background-color: #222;
+    color: #e3e3e3;
+}
+
+body {
+    font-size: 1.6rem;
+    font-family: 'Inconsolata', monospace;
+    max-width: 39em;
+    margin: auto;
+    padding: 1em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Merriweather', san serif;
+    letter-spacing: 5px;
+}
