@@ -3,15 +3,20 @@ use std::io::{self, Write};
 
 
 
-
-fn main() {
-    println!("Starting systems ...");
-}
-
 // @Refactor: we'll keep everything here for now 
 // and move out once we get a better sense for our modules
+fn main() {
+    println!("Starting systems ...");
+    let z = ZoneGrid::new(v2(16,16));
+    println!("ZoneGrid default:\n{:?}", z);
+    let p = PopulationGrid::new(v2(16,16));
+    println!("PopulationGrid default:\n{:?}", p);
+
+}
+
 
 /// Sends a message to stdout
+// We might end of scratching this out
 fn send_message(message: &[u8]){
     let stdout = io::stdout();
     let mut handle =  stdout.lock();
@@ -19,10 +24,7 @@ fn send_message(message: &[u8]){
     handle.flush();
 }
 
-/// Convenience function for making Vector2
-fn v2(x: usize, y: usize) -> Vector2{
-    Vector2{x: x, y: y}
-}
+
 
 /// A 2-dimensional vector
 struct Vector2 {
@@ -36,11 +38,19 @@ impl fmt::Debug for Vector2 {
     }
 }
 
+/// Convenience function for making Vector2
+fn v2(x: usize, y: usize) -> Vector2{
+    Vector2{x: x, y: y}
+}
+
+
+
 /// Grid that keeps track of the population in all of the zones
 struct PopulationGrid {
     zones: Vec<usize>,
     size: Vector2,
 }
+
 
 impl PopulationGrid {
     /// Returns a new population grid of size Vector2.x * Vector2.y
@@ -51,48 +61,87 @@ impl PopulationGrid {
         PopulationGrid{zones: zones, size: grid_size}
     }
 
-    fn get_zone(&self, location: &Vector2) -> Option<usize> {
+    fn get_zone(&mut self, location: &Vector2) -> Option<&mut usize> {
         let width = self.size.x; 
         let height = self.size.y;
         let mut zone = None;
         if location.x < width && location.y < height {
             let index: usize = height * location.y + location.x;
             if index < self.zones.len(){
-                zone = Some(self.zones[index]);
+                zone = Some(&mut self.zones[index]);
             }
         }
         zone
     }
 
     fn populationCount(&self) -> usize {
-       self.zones.iter().sum();  
+       self.zones.iter().sum() 
     }
 }
 
+
 impl fmt::Debug for PopulationGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for x in 0..self.size.x {
-            for y in 0..self.size.y {
-                let val = self.get_zone(&Vector2{x,y}).unwrap();
-                write!(f, "{:?}", &val);
+        for (i, e) in self.zones.iter().enumerate() {
+            if i > 0 && i % self.size.x == 0 {
+                write!(f, "\n");
             }
-            write!(f, "\n");
+            write!(f, "{:?}", e);
         }
         Ok(())
     }
 }
 
-
-struct ResidentialZone {
-    name: String,
+#[derive(Debug, Clone)]
+enum Zone {
+    Residential,
+    Commercial,
+    Industrial,
+    // @Refactor: Empty sounded like the right name for no land. But perhaps Open or Vacant are better.
+    Empty,
 }
 
-struct CommercialZone {
-    name: String,
+/// Grid that keeps track of the population in all of the zones
+struct ZoneGrid {
+    zones: Vec<Zone>,
+    size: Vector2,
 }
 
-struct IndustrialZone {
-    name: String,
+
+impl ZoneGrid {
+    /// Returns a new population grid of size Vector2.x * Vector2.y
+    /// # Argumens
+    /// * `grid_size` - a Vector2 representing the dimensions of the grid
+    fn new(grid_size: Vector2) -> ZoneGrid {
+        let zones: Vec<Zone> = vec![Zone::Empty; grid_size.x * grid_size.y];
+        ZoneGrid{zones: zones, size: grid_size}
+    }
+
+    fn get_zone(&mut self, location: &Vector2) -> Option<&mut Zone> {
+        let width = self.size.x; 
+        let height = self.size.y;
+        let mut zone = None;
+        if location.x < width && location.y < height {
+            let index: usize = height * location.y + location.x;
+            if index < self.zones.len(){
+                zone = Some(&mut self.zones[index]);
+            }
+        }
+        zone
+    }
+}
+
+
+impl fmt::Debug for ZoneGrid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, e) in self.zones.iter().enumerate() {
+            if i > 0 && i % self.size.x == 0 {
+                write!(f, "\n");
+            }
+            write!(f, "{:?} ", e);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
