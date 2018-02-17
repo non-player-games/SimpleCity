@@ -5,7 +5,7 @@
   "main": "build/main.js",
   "scripts": {
     "prebuild": "rm -rf build",
-    "build": "tsc",
+    "build": "tsc && electron-rebuild",
     "prestart": "npm install && npm run build",
     "start": "electron ."
   },
@@ -19,10 +19,12 @@
   "devDependencies": {
     "@types/pixi.js": "^4.7.1",
     "electron": "~1.7.8",
+    "electron-rebuild": "^1.7.3",
     "tslint": "^5.9.1",
     "typescript": "^2.7.1"
   },
   "dependencies": {
-    "pixi.js": "^4.7.0"
+    "pixi.js": "^4.7.0",
+    "ffi": "git@github.com:node-ffi/node-ffi.git#master"
   }
 }

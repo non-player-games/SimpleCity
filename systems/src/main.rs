@@ -65,7 +65,7 @@ impl PopulationGrid {
     }
 
     fn populationCount(&self) -> usize {
-       self.zones.iter().sum();  
+       self.zones.iter().sum()
     }
 }
 
