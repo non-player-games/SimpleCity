@@ -1,14 +1,4 @@
-// loading pixi
-require("pixi.js");
-
-import * as path from "path";
-
-const ffi = require('ffi');
-
-const fibonacci = ffi.Library(path.join(__dirname, '../../systems/target/debug/libsystems'), {
-    calc: ['int', ['int']]
-});
-console.log(fibonacci.calc(30));
+import * as PIXI from "pixi.js";
 
 const pixiApp = new PIXI.Application({
     width: 512,
