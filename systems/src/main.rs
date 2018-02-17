@@ -1,11 +1,30 @@
 use std::fmt;
+use std::io::{self, Write};
+
+
 
 
 fn main() {
     println!("Starting systems ...");
 }
 
+// @Refactor: we'll keep everything here for now 
+// and move out once we get a better sense for our modules
 
+/// Sends a message to stdout
+fn send_message(message: &[u8]){
+    let stdout = io::stdout();
+    let mut handle =  stdout.lock();
+    handle.write(message);
+    handle.flush();
+}
+
+/// Convenience function for making Vector2
+fn v2(x: usize, y: usize) -> Vector2{
+    Vector2{x: x, y: y}
+}
+
+/// A 2-dimensional vector
 struct Vector2 {
     x: usize,
     y: usize,
@@ -17,13 +36,16 @@ impl fmt::Debug for Vector2 {
     }
 }
 
-
+/// Grid that keeps track of the population in all of the zones
 struct PopulationGrid {
     zones: Vec<usize>,
     size: Vector2,
 }
 
 impl PopulationGrid {
+    /// Returns a new population grid of size Vector2.x * Vector2.y
+    /// # Argumens
+    /// * `grid_size` - a Vector2 representing the dimensions of the grid
     fn new(grid_size: Vector2) -> PopulationGrid {
         let zones: Vec<usize> = vec![0; grid_size.x * grid_size.y];
         PopulationGrid{zones: zones, size: grid_size}
@@ -41,6 +63,10 @@ impl PopulationGrid {
         }
         zone
     }
+
+    fn populationCount(&self) -> usize {
+       self.zones.iter().sum();  
+    }
 }
 
 impl fmt::Debug for PopulationGrid {
@@ -55,6 +81,7 @@ impl fmt::Debug for PopulationGrid {
         Ok(())
     }
 }
+
 
 struct ResidentialZone {
     name: String,
