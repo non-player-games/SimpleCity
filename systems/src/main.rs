@@ -1,12 +1,29 @@
 use std::fmt;
 use std::io::{self, Write};
+use std::mem;
 
 // @Refactor: we'll keep everything here for now
 // and move out once we get a better sense for our modules
 fn main() {
     println!("Starting systems ...");
-    let z = ZoneGrid::new(v2(16, 16));
-    println!("ZoneGrid default:\n{:?}", z);
+    
+
+    // Examples: 
+    // ZoneGrid init, print, change, print
+    let mut z = ZoneGrid::new(v2(16, 16));
+    println!("ZoneGrid default:\n{:?}", &z);
+    {
+        let mut e = z.get_zone(&v2(0,0));
+        match e {
+            Some(old_zone) => {
+                mem::replace(old_zone, Zone::Residential);
+            },
+            None => {},
+        }
+    }
+    println!("ZoneGrid changed:\n{:?}", &z);
+
+    // Population Grid init
     let p = PopulationGrid::new(v2(16, 16));
     println!("PopulationGrid default:\n{:?}", p);
 }
