@@ -14,7 +14,7 @@ const systemFile: string = path.join(
 
 // getting system function from ffi
 const systemsLib = ffi.Library(systemFile, {
-    calc: ['int', ['int']]
+    calc: ["int", ["int"]]
 });
 // construct systems with interface above
 const systems: Systems = {

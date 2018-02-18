@@ -17,6 +17,9 @@
   "author": "Eric Liao <rcliao01@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@types/electron": "^1.6.10",
+    "@types/ffi": "^0.1.0",
+    "@types/node": "^9.4.6",
     "@types/pixi.js": "^4.7.1",
     "electron": "~1.7.8",
     "electron-rebuild": "^1.7.3",

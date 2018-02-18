@@ -22,9 +22,8 @@ for (let i = 0; i < ROW; i ++) {
 
 function onclick (rect, i, j) {
     return function() {
-        console.log('rect', rect);
         drawRect(i, j, 0x3333FF, rect);
-    }
+    };
 }
 
 function drawRect(i, j, color, rect) {
@@ -41,6 +40,6 @@ function drawRect(i, j, color, rect) {
     rectangle.y = j * 50;
     rectangle.interactive = true;
     rectangle.buttonMode = true;
-    rectangle.on('pointerdown', onclick(rectangle, i, j));
+    rectangle.on("pointerdown", onclick(rectangle, i, j));
     pixiApp.stage.addChild(rectangle);
 }
