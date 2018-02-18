@@ -1,45 +1,54 @@
-# electron-quick-start
+# SimpleCity Front End
 
-**Clone and run for a quick way to see Electron in action.**
+## Getting Started
 
-This is a minimal Electron application based on the [Quick Start Guide](http://electron.atom.io/docs/tutorial/quick-start) within the Electron documentation.
+To get started, you will need [Node.js][1] installed. And you can use the following
+command to start the application (including installing the dependencies)
 
-**Use this app along with the [Electron API Demos](http://electron.atom.io/#get-started) app for API code examples to help you get started.**
-
-A basic Electron application needs just these files:
-
-- `package.json` - Points to the app's main file and lists its details and dependencies.
-- `main.js` - Starts the app and creates a browser window to render HTML. This is the app's **main process**.
-- `index.html` - A web page to render. This is the app's **renderer process**.
-
-You can learn more about each of these components within the [Quick Start Guide](http://electron.atom.io/docs/tutorial/quick-start).
-
-## To Use
-
-To clone and run this repository you'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org/en/download/) (which comes with [npm](http://npmjs.com)) installed on your computer. From your command line:
-
-```bash
-# Clone this repository
-git clone https://github.com/electron/electron-quick-start
-# Go into the repository
-cd electron-quick-start
-# Install dependencies
-npm install
-# Run the app
+```
 npm start
 ```
 
-Note: If you're using Linux Bash for Windows, [see this guide](https://www.howtogeek.com/261575/how-to-run-graphical-linux-desktop-applications-from-windows-10s-bash-shell/) or use `node` from the command prompt.
+After you run the command, it should bring up an Electron application showing the
+user interface of the SimpleCity.
 
-## Resources for Learning Electron
+## Developing
 
-- [electron.atom.io/docs](http://electron.atom.io/docs) - all of Electron's documentation
-- [electron.atom.io/community/#boilerplates](http://electron.atom.io/community/#boilerplates) - sample starter apps created by the community
-- [electron/electron-quick-start](https://github.com/electron/electron-quick-start) - a very basic starter Electron app
-- [electron/simple-samples](https://github.com/electron/simple-samples) - small applications with ideas for taking them further
-- [electron/electron-api-demos](https://github.com/electron/electron-api-demos) - an Electron app that teaches you how to use Electron
-- [hokein/electron-sample-apps](https://github.com/hokein/electron-sample-apps) - small demo apps for the various Electron APIs
+This project is built with [Electron][2], [Node.js][1] and [TypeScript][3]
 
-## License
+Before you start contributing, please be familiar with the tools.
 
-[CC0 1.0 (Public Domain)](LICENSE.md)
+### Prerequisites
+
+* [Node.js][1]
+
+### Setting up Dev
+
+To set up development environment, simply clone the repository and install dependencies by running
+
+```
+npm install && npm run build
+```
+
+## Versioning
+
+We follow [SemVer](https://semver.org/) for versioning. For versions available, see the link to tags on
+the repository
+
+## Tests
+
+To test front end codes, we use [Jest][4] for testing:
+
+```
+npm test
+```
+
+## Style Guide
+
+We use [tslint][5] for setting up style related linter, please check tslint.json
+
+[1]: https://nodejs.org/en/
+[2]: https://nodejs.org/en/
+[3]: https://www.typescriptlang.org/
+[4]: https://facebook.github.io/jest/
+[5]: https://palantir.github.io/tslint/
