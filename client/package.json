@@ -15,7 +15,9 @@
     "prebuild-linux": "rm -rf build",
     "build-linux": "./link-systems.sh linux && tsc && electron-rebuild",
     "prepackage-linux": "npm run build-linux",
-    "package-linux": "electron-packager . --platform=linux --arch=x64 --overwrite --out bin"
+    "package-linux": "electron-packager . --platform=linux --arch=x64 --overwrite --out bin",
+    "prestart-linux": "npm install && npm run build-linux",
+    "start-linux": "electron ."
   },
   "repository": "https://github.com/non-player-games/SimpleCity",
   "keywords": [
