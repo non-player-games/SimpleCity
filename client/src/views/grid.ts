@@ -6,14 +6,17 @@ const rectSize: number = 32;
 const rectPadding: number = 8;
 
 // light grey background
-const backgroundColor: number = 0x222222;
+const backgroundColor: number = 0x333333;
+const whiteColor: number = 0xeeeeee;
 const zoneColors: number[] = [
+    0x222222,
     0x00ff7f,
     0x3399ff,
     0xffff66
 ];
 
 enum ZoneType {
+    None,
     Residential,
     Commercial,
     Industrial
@@ -54,6 +57,9 @@ export function drawGrid (pixiApp: PIXI.Application, grid: ZoneType[][]) {
             rectangle = new PIXI.Graphics();
         }
         rectangle.beginFill(color);
+        if (color === zoneColors[ZoneType.None]) {
+            rectangle.lineStyle(2, whiteColor);
+        }
         rectangle.drawRect(0, 0, rectSize, rectSize);
         rectangle.x = i * (rectSize + rectPadding);
         rectangle.y = j * (rectSize + rectPadding);

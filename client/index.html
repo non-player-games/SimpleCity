@@ -6,11 +6,17 @@
 
     <link rel="stylesheet" href="assets/app.css">
   </head>
-  <body>
-    <h1>SimpleCity</h1>
-    <p>Welcome to SimpleCity</p>
-
-    <div id="grid"></div>
+  <body class="fullscreen">
+    <div class="info floating-panel">
+      $: 100
+    </div>
+    <div id="grid" class="fill-paent"></div>
+    <div class="actions floating-panel">
+        <button class="none color-circle" data-type="none"></button>
+        <button class="residential color-circle" data-type="residential"></button>
+        <button class="commercial color-circle" data-type="commercial"></button>
+        <button class="industrial color-circle" data-type="industrial"></button>
+    </div>
 
     <script>
       // You can also require other files to run in this process
