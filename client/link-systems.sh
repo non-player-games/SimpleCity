@@ -17,6 +17,7 @@ case "${target}" in
         echo "Building for 64 bit linux"
         cargo build --target=x86_64-unknown-linux-musl
         cp target/debug/libsystems.so ../client/systems/
+        cp target/debug/systems ../client/systems/
         ;;
     "darwin")
         # problem compiling on linux
@@ -24,6 +25,7 @@ case "${target}" in
         cargo build --target=x86_64-apple-darwin
         mkdir -p ../client/systems
         cp target/debug/libsystems.dylib ../client/systems/
+        cp target/debug/systems ../client/systems/
         ;;
     *)
         echo "unknown target ${target}"
