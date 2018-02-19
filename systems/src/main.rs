@@ -1,14 +1,32 @@
+use std::sync::{Arc, Mutex};
 use std::fmt;
 use std::io::{self, Write};
+use std::mem;
+use std::{thread, time};
 
 // @Refactor: we'll keep everything here for now
 // and move out once we get a better sense for our modules
 fn main() {
     println!("Starting systems ...");
-    let z = ZoneGrid::new(v2(16, 16));
-    println!("ZoneGrid default:\n{:?}", z);
+
+    // Examples: 
+    // ZoneGrid init, print, change, print
+    let mut z = ZoneGrid::new(v2(16, 16));
+    {
+        let mut e = z.get_zone(&v2(0,0));
+        match e {
+            Some(old_zone) => {
+                mem::replace(old_zone, Zone::Residential);
+            },
+            None => {},
+        }
+    }
+    println!("ZoneGrid changed:\n{:?}", &z);
+
+    // Population Grid init
     let p = PopulationGrid::new(v2(16, 16));
     println!("PopulationGrid default:\n{:?}", p);
+    listen();
 }
 
 /// Sends a message to stdout
@@ -16,8 +34,58 @@ fn main() {
 fn send_message(message: &[u8]) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
+    handle.write(b"SYSTEM: ");
     handle.write(message);
+    handle.write(b"\n");
     handle.flush();
+}
+
+fn listen(){
+    let data = Arc::new(Mutex::new(String::from("")));
+    {
+        let d = data.clone();
+        // This thread is dedicated to reading from stdin because stdin
+        // is blocking
+        thread::spawn(move || {
+            let mut input = String::from("");
+            loop {
+                match io::stdin().read_line(&mut input) {
+                    Ok(n) => {
+                        input = input.trim().to_string();
+                        let mut dd = d.lock().unwrap();
+                        *dd = input.clone();
+                        input = String::from("");
+                        // @Robustness when we terminate the function, how does this thread get cleaned
+                        // up?!?!
+                    }
+                    Err(error) => println!("error: {}", error),
+                }
+            }
+        });
+    }
+    
+    // @Incomplete this is the skeleton of what the systems side game/simulation loop
+    // pause it every second to simulate it doing processing
+    // will terminate once it receives QUIT from stdin
+    let sec = time::Duration::from_millis(1000);
+    let mut done = false;
+    while !done {
+        thread::sleep(sec); 
+        let mut cmd: String = String::from("");
+        {
+            let mut d = data.lock().unwrap();
+            cmd = d.clone();
+            *d = String::from("");
+        }
+        if cmd.len() > 0 {
+            send_message(&cmd.as_bytes());
+            if &cmd == "QUIT" {
+                done = true;
+            }
+        } else {
+            println!("No update");
+        }
+    }
 }
 
 /// A 2-dimensional vector
