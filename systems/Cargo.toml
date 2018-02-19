@@ -7,4 +7,4 @@ authors = [""]
 
 [lib]
 name = "systems"
-crate-type = ["dylib"]
+crate-type = ["dylib", "staticlib"]

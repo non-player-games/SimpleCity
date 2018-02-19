@@ -12,10 +12,12 @@ const systemFile: string = path.join(
     "../systems/libsystems"
 );
 
+
 // getting system function from ffi
 const systemsLib = ffi.Library(systemFile, {
     calc: ["int", ["int"]]
 });
+
 // construct systems with interface above
 const systems: Systems = {
     calc: systemsLib.calc
