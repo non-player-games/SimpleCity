@@ -1,5 +1,8 @@
 import {initWindow} from "./window";
-import router from "./router";
+import handlers from "./handlers";
 
+// create window
 initWindow();
-router();
+
+// define ipc message handling
+handlers();
