@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as ffi from "ffi";
-// import * as os from "os";
+
 // define system function signatures
 interface Systems {
     calc(n: number): number;
@@ -12,26 +12,12 @@ const systemFile: string = path.join(
     "../systems/libsystems"
 );
 
-/*
-var systemFile: string;
-const platform = os.platform();
-switch(platform){
-    case "darwin":
-        systemFile = path.join(__dirname, "../systems/systems");
-        break;
-    case "linux":
-        systemFile = path.join(__dirname, "../systems/systems");
-        break;
-    default:
-        console.log("Running for unsupported platform");
-}
-*/
-
 
 // getting system function from ffi
 const systemsLib = ffi.Library(systemFile, {
     calc: ["int", ["int"]]
 });
+
 // construct systems with interface above
 const systems: Systems = {
     calc: systemsLib.calc
