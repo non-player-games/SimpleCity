@@ -5,11 +5,11 @@
   "main": "build/main.js",
   "scripts": {
     "prebuild": "rm -rf build",
-    "build": "tsc && electron-rebuild",
+    "build": "tsc && ./link-systems.sh && electron-rebuild",
     "prestart": "npm install && npm run build",
     "start": "electron .",
     "prepackage": "npm run build",
-    "package": "electron-packager . --all --overwrite --out bin"
+    "package": "electron-packager . --all --overwrite --prune false --out bin"
   },
   "repository": "https://github.com/non-player-games/SimpleCity",
   "keywords": [

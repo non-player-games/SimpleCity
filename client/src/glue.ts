@@ -9,7 +9,7 @@ interface Systems {
 // TODO: maybe toggle this file to use release if NODE_ENV is prod
 const systemFile: string = path.join(
     __dirname,
-    "../../systems/target/debug/libsystems"
+    "../systems/libsystems"
 );
 
 // getting system function from ffi
