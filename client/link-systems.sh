@@ -2,7 +2,7 @@
 set -e
 
 if [[ $# -lt 1 ]] ; then
-    echo "Usage: "$(basename $0) TARGET
+    echo "Usage: $(basename $0) TARGET"
     exit 1
 fi
 
@@ -20,10 +20,9 @@ case "${target}" in
         cp target/debug/systems ../client/systems/
         ;;
     "darwin")
-        # problem compiling on linux
+        # @Fixme problem compiling on linux
         echo "Building for 64 bit mac"
         cargo build --target=x86_64-apple-darwin
-        mkdir -p ../client/systems
         cp target/debug/libsystems.dylib ../client/systems/
         cp target/debug/systems ../client/systems/
         ;;
