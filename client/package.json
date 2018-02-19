@@ -1,6 +1,6 @@
 {
   "name": "SimpleCity-frontend",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "To re-create and simplify SimCity",
   "main": "build/main.js",
   "scripts": {
@@ -8,6 +8,8 @@
     "build": "tsc && ./link-systems.sh && electron-rebuild",
     "prestart": "npm install && npm run build",
     "start": "electron .",
+    "prepackage-osx": "npm run build",
+    "package-osx": "electron-packager . --platform=darwin --arch=x64 --overwrite --out bin",
     "prepackage": "npm run build",
     "package": "electron-packager . --all --overwrite --out bin"
   },
@@ -19,7 +21,6 @@
   "author": "Eric Liao <rcliao01@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "@types/electron": "^1.6.10",
     "@types/ffi": "^0.1.0",
     "@types/node": "^9.4.6",
     "@types/pixi.js": "^4.7.1",
