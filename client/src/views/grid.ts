@@ -16,10 +16,10 @@ const zoneColors: number[] = [
 ];
 
 enum ZoneType {
-    None,
-    Residential,
-    Commercial,
-    Industrial
+    NONE,
+    RESIDENTIAL,
+    COMMERCIAL,
+    INDUSTRIAL
 }
 
 export function create (container: Element): PIXI.Application {
@@ -34,7 +34,7 @@ export function create (container: Element): PIXI.Application {
     return pixiApp;
 }
 
-export function drawGrid (pixiApp: PIXI.Application, grid: ZoneType[][]) {
+export function drawGrid (pixiApp: PIXI.Application, grid: ZoneType[][], state) {
     // create default size of grid
     for (let i = 0; i < grid.length; i ++) {
         for (let j = 0; j < grid[i].length; j ++) {
@@ -44,7 +44,7 @@ export function drawGrid (pixiApp: PIXI.Application, grid: ZoneType[][]) {
 
     function onclick (rect, i, j) {
         return function() {
-            drawRect(i, j, 0x3333FF, rect);
+            drawRect(i, j, zoneColors[ZoneType[state.activeBuildType]], rect);
         };
     }
 
@@ -57,7 +57,7 @@ export function drawGrid (pixiApp: PIXI.Application, grid: ZoneType[][]) {
             rectangle = new PIXI.Graphics();
         }
         rectangle.beginFill(color);
-        if (color === zoneColors[ZoneType.None]) {
+        if (color === zoneColors[ZoneType.NONE]) {
             rectangle.lineStyle(2, whiteColor);
         }
         rectangle.drawRect(0, 0, rectSize, rectSize);
