@@ -1,11 +1,17 @@
+#[macro_use] extern crate serde_derive;
+extern crate systems;
+extern crate serde_json;
+
+use systems::simulation::{ZoneGrid, PopulationGrid, Zone, Vector2};
+
+use std::collections::vec_deque::Drain;
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
-use std::fmt;
 use std::io::{self, Write};
 use std::mem;
 use std::{thread, time};
 
-// @Refactor: we'll keep everything here for now
-// and move out once we get a better sense for our modules
+
 fn main() {
     println!("Starting systems ...");
 
@@ -22,6 +28,8 @@ fn main() {
         }
     }
     println!("ZoneGrid changed:\n{:?}", &z);
+    let serialized = serde_json::to_string(&z).unwrap();
+    println!("Serialized: {}", &serialized);
 
     // Population Grid init
     let p = PopulationGrid::new(v2(16, 16));
@@ -41,7 +49,8 @@ fn send_message(message: &[u8]) {
 }
 
 fn listen(){
-    let data = Arc::new(Mutex::new(String::from("")));
+    //let data = Arc::new(Mutex::new(String::from("")));
+    let data: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
     {
         let d = data.clone();
         // This thread is dedicated to reading from stdin because stdin
@@ -50,11 +59,12 @@ fn listen(){
             let mut input = String::from("");
             loop {
                 match io::stdin().read_line(&mut input) {
-                    Ok(n) => {
+                    Ok(_) => {
                         input = input.trim().to_string();
                         let mut dd = d.lock().unwrap();
-                        *dd = input.clone();
-                        input = String::from("");
+                        //*dd = input.clone();
+                        dd.push_back(input.clone());
+                        input.clear();
                         // @Robustness when we terminate the function, how does this thread get cleaned
                         // up?!?!
                     }
@@ -70,180 +80,33 @@ fn listen(){
     let sec = time::Duration::from_millis(1000);
     let mut done = false;
     while !done {
-        thread::sleep(sec); 
-        let mut cmd: String = String::from("");
+        thread::sleep(sec * 2); 
+        let mut cmd: String;
+        // READ COMMANDS
         {
-            let mut d = data.lock().unwrap();
-            cmd = d.clone();
-            *d = String::from("");
-        }
-        if cmd.len() > 0 {
-            send_message(&cmd.as_bytes());
-            if &cmd == "QUIT" {
-                done = true;
+            let mut drained: Vec<String> = Vec::with_capacity(0);
+            {
+                let mut d = data.lock().unwrap();
+                drained = d.drain(..).collect();
             }
-        } else {
-            println!("No update");
+            for d in drained {
+                cmd = d;
+                if cmd.len() > 0 {
+                    if cmd.as_str().starts_with("quitGame") {
+                        done = true;
+                    }
+                    if cmd.as_str().starts_with("echo") {
+                        send_message(&cmd.as_bytes());
+                    }
+                }
+            }
         }
-    }
-}
-
-/// A 2-dimensional vector
-struct Vector2 {
-    x: usize,
-    y: usize,
-}
-
-impl fmt::Debug for Vector2 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[x: {}, y: {}]", self.x, self.y)
+        
     }
 }
 
 /// Convenience function for making Vector2
+// @Copypaste
 fn v2(x: usize, y: usize) -> Vector2 {
     Vector2 { x: x, y: y }
-}
-
-/// Grid that keeps track of the population in all of the zones
-struct PopulationGrid {
-    zones: Vec<usize>,
-    size: Vector2,
-}
-
-impl PopulationGrid {
-    /// Returns a new population grid of size Vector2.x * Vector2.y
-    /// # Argumens
-    /// * `grid_size` - a Vector2 representing the dimensions of the grid
-    fn new(grid_size: Vector2) -> PopulationGrid {
-        let zones: Vec<usize> = vec![0; grid_size.x * grid_size.y];
-        PopulationGrid {
-            zones: zones,
-            size: grid_size,
-        }
-    }
-
-    fn get_zone(&mut self, location: &Vector2) -> Option<&mut usize> {
-        let width = self.size.x;
-        let height = self.size.y;
-        let mut zone = None;
-        if location.x < width && location.y < height {
-            let index: usize = height * location.y + location.x;
-            if index < self.zones.len() {
-                zone = Some(&mut self.zones[index]);
-            }
-        }
-        zone
-    }
-
-    fn population_count(&self) -> usize {
-        self.zones.iter().sum()
-    }
-}
-
-impl fmt::Debug for PopulationGrid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, e) in self.zones.iter().enumerate() {
-            if i > 0 && i % self.size.x == 0 {
-                write!(f, "\n");
-            }
-            write!(f, "{:?}", e);
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-enum Zone {
-    Residential,
-    Commercial,
-    Industrial,
-    // @Refactor: Empty sounded like the right name for no land. But perhaps Open or Vacant are better.
-    Empty,
-}
-
-/// Grid that keeps track of the population in all of the zones
-struct ZoneGrid {
-    zones: Vec<Zone>,
-    size: Vector2,
-}
-
-impl ZoneGrid {
-    /// Returns a new population grid of size Vector2.x * Vector2.y
-    /// # Argumens
-    /// * `grid_size` - a Vector2 representing the dimensions of the grid
-    fn new(grid_size: Vector2) -> ZoneGrid {
-        let zones: Vec<Zone> = vec![Zone::Empty; grid_size.x * grid_size.y];
-        ZoneGrid {
-            zones: zones,
-            size: grid_size,
-        }
-    }
-
-    fn get_zone(&mut self, location: &Vector2) -> Option<&mut Zone> {
-        let width = self.size.x;
-        let height = self.size.y;
-        let mut zone = None;
-        if location.x < width && location.y < height {
-            let index: usize = height * location.y + location.x;
-            if index < self.zones.len() {
-                zone = Some(&mut self.zones[index]);
-            }
-        }
-        zone
-    }
-}
-
-impl fmt::Debug for ZoneGrid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, e) in self.zones.iter().enumerate() {
-            if i > 0 && i % self.size.x == 0 {
-                write!(f, "\n");
-            }
-            write!(f, "{:?} ", e);
-        }
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn valid_location() {
-        let x_high = 16;
-        let y_high = 16;
-        let dimensions = Vector2 {
-            x: x_high,
-            y: y_high,
-        };
-        let mut population_grid = PopulationGrid::new(dimensions);
-
-        let zone_v2 = Vector2 { x: 0, y: 0 };
-        let zone = population_grid.get_zone(&zone_v2);
-        assert!(zone.is_some());
-    }
-
-    #[test]
-    fn invalid_location() {
-        let x_high = 16;
-        let y_high = 16;
-        let mut population_grid = PopulationGrid::new(Vector2 {
-            x: x_high,
-            y: y_high,
-        });
-
-        let zone_no_exist0 = population_grid.get_zone(&Vector2 {
-            x: x_high,
-            y: y_high,
-        });
-        assert!(!zone_no_exist0.is_some());
-
-        let zone_no_exist1 = population_grid.get_zone(&Vector2 {
-            x: x_high * y_high + 100000,
-            y: 0,
-        });
-        assert!(!zone_no_exist1.is_some());
-    }
 }

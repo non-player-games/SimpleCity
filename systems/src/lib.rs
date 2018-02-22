@@ -1,3 +1,7 @@
+#[macro_use] extern crate serde_derive;
+pub mod simulation;
+
+
 #[no_mangle]
 pub extern fn calc(x: i32) -> i32 {
     if x <= 2 {
