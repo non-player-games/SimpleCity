@@ -9,7 +9,6 @@ import { BaseSources, BaseSinks } from '../interfaces';
 import { RouteValue, routes, initialRoute } from '../routes';
 
 import { State as CounterState } from './counter';
-import { State as SpeakerState } from './speaker';
 
 export interface Sources extends BaseSources {
     onion: StateSource<State>;
@@ -21,11 +20,9 @@ export interface Sinks extends BaseSinks {
 // State
 export interface State {
     counter?: CounterState;
-    speaker?: SpeakerState;
 }
 export const defaultState: State = {
     counter: { count: 5 },
-    speaker: undefined //use default state of component
 };
 export type Reducer = (prev?: State) => State | undefined;
 
