@@ -1,5 +1,5 @@
 import { Component } from './interfaces';
-import { Counter } from './components/counter';
+import { Home } from './components/home';
 
 export interface RouteValue {
     component: Component;
@@ -10,7 +10,7 @@ export interface Routes {
 }
 
 export const routes: Routes = {
-    '/': { component: Counter, scope: 'counter' }
+    '/': { component: Home, scope: 'home' }
 };
 
 export const initialRoute = '/';

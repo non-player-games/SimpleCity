@@ -21,7 +21,7 @@ export const defaultState: State = {
 };
 export type Reducer = (prev: State) => State | undefined;
 
-export function Counter({ DOM, onion }: Sources): Sinks {
+export function Home({ DOM, onion }: Sources): Sinks {
     const action$: Stream<Reducer> = intent(DOM);
     const vdom$: Stream<VNode> = view(onion.state$);
 
@@ -49,15 +49,17 @@ function intent(DOM: DOMSource): Stream<Reducer> {
 
 function view(state$: Stream<State>): Stream<VNode> {
     return state$.map(({ count }) => (
-        <div>
-            <h2>My Awesome Cycle.js app - Page 1</h2>
-            <span>{'Counter: ' + count}</span>
-            <button type="button" className="add">
-                Increase
-            </button>
-            <button type="button" className="subtract">
-                Decrease
-            </button>
+        <div className="fill-parent">
+            <div className="info floating-panel">
+            $: 100
+            </div>
+            <div id="grid" className="fill-paent"></div>
+            <div className="actions floating-panel">
+                <button className="none color-circle" data-type="NONE"></button>
+                <button className="residential color-circle" data-type="RESIDENTIAL"></button>
+                <button className="commercial color-circle" data-type="COMMERCIAL"></button>
+                <button className="industrial color-circle" data-type="INDUSTRIAL"></button>
+            </div>
         </div>
     ));
 }

@@ -1,10 +1,99 @@
-html {
-    width: 100%;
-    height: 100%;
+/* Define fonts */
+@font-face {
+    font-family: 'Inconsolata';
+    src: url('/fonts/Inconsolata-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Merriweather';
+    src: url('/fonts/Merriweather-Light.ttf') format('truetype');
 }
 
-span,
-button,
-textarea {
+/* Basic Typography */
+html {
+    font-size: 10px;
+    background-color: #222;
+    color: #e3e3e3;
+}
+
+body {
+    font-size: 1.6rem;
+    font-family: 'Inconsolata', monospace;
+    max-width: 45em;
+    margin: auto;
+    padding: 1em;
+}
+body.fullscreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+.fill-parent,
+canvas {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Merriweather', san serif;
+    letter-spacing: 5px;
+}
+
+/* app specific */
+.floating-panel {
+    position: fixed;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    z-index: 10;
+}
+.info {
+    top: 0;
+    right: 0;
+    padding: 0.5em;
     margin: 0.5em;
+}
+.actions {
+    bottom: 0;
+    left: 0;
+    margin-left: 1em;
+    margin-bottom: 0.5em;
+}
+button {
+    background-color: transparent;
+    padding: 0;
+    margin: 1em;
+    border: none;
+}
+button:hover {
+    opacity: 0.8;
+    cursor: pointer;
+}
+button:active {
+    opacity: 0.5;
+}
+button:focus {
+    outline: none;
+}
+.color-circle {
+    display: inline-block;
+    width: 2em;
+    height: 2em;
+    border-radius: 50%;
+}
+.color-circle.active {
+    border: 2px solid #ff4040;
+}
+.color-circle.none {
+    background-color: #222222;
+}
+.color-circle.residential {
+    background-color: #00ff7f;
+}
+.color-circle.commercial {
+    background-color: #3399ff;
+}
+.color-circle.industrial {
+    background-color: #ffff66;
 }
