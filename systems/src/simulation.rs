@@ -7,7 +7,6 @@ use std::io::{self, Write};
 use std::mem;
 use std::{thread, time};
 
-
 /// A 2-dimensional vector
 #[derive(Serialize, Deserialize)]
 pub struct Vector2 {
@@ -28,6 +27,7 @@ fn v2(x: usize, y: usize) -> Vector2 {
 }
 
 /// Grid that keeps track of the population in all of the zones
+#[derive(Serialize, Deserialize)]
 pub struct PopulationGrid {
     zones: Vec<usize>,
     size: Vector2,
@@ -75,14 +75,16 @@ impl fmt::Debug for PopulationGrid {
     }
 }
 
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Zone {
     // @Refactor: Empty sounded like the right name for no land. But perhaps Open or Vacant are better.
-    Empty = 0,
-    Residential = 1,
-    Commercial = 2,
-    Industrial = 3,
+    Empty,
+    Residential,
+    Commercial,
+    Industrial,
 }
+
 
 /// Grid that keeps track of the population in all of the zones
 #[derive(Serialize, Deserialize)]
@@ -130,6 +132,7 @@ impl fmt::Debug for ZoneGrid {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,3 +174,7 @@ mod tests {
         assert!(!zone_no_exist1.is_some());
     }
 }
+
+
+
+
