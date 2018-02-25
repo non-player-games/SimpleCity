@@ -1,26 +1,5 @@
 import * as PIXI from "pixi.js";
 
-const width: number = 512;
-const height: number = 512;
-const rectSize: number = 32;
-const rectPadding: number = 8;
-
-// light grey background
-const backgroundColor: number = 0x333333;
-const whiteColor: number = 0xeeeeee;
-const zoneColors: number[] = [
-    0x222222,
-    0x00ff7f,
-    0x3399ff,
-    0xffff66
-];
-
-enum ZoneType {
-    NONE,
-    RESIDENTIAL,
-    COMMERCIAL,
-    INDUSTRIAL
-}
 
 export function create (container: Element): PIXI.Application {
     const pixiApp = new PIXI.Application({

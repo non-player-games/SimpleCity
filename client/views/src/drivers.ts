@@ -1,15 +1,17 @@
-import xs, { Stream } from 'xstream';
-import { restartable } from 'cycle-restart';
-import { makeDOMDriver } from '@cycle/dom';
-import { makeHistoryDriver } from '@cycle/history';
-import { timeDriver } from '@cycle/time';
-import { routerify, RouteMatcher } from 'cyclic-router';
-import onionify from 'cycle-onionify';
-import storageify from 'cycle-storageify';
-import switchPath from 'switch-path';
-import storageDriver from '@cycle/storage';
+import xs, { Stream } from "xstream";
+import { restartable } from "cycle-restart";
+import { makeDOMDriver } from "@cycle/dom";
+import { makeHistoryDriver } from "@cycle/history";
+import { timeDriver } from "@cycle/time";
+import { routerify, RouteMatcher } from "cyclic-router";
+import onionify from "cycle-onionify";
+import storageify from "cycle-storageify";
+import switchPath from "switch-path";
+import storageDriver from "@cycle/storage";
 
-import { Component } from './interfaces';
+import {makePixiDriver} from "./drivers/pixi";
+
+import { Component } from "./interfaces";
 
 export type DriverThunk = Readonly<[string, () => any]> & [string, () => any]; // work around readonly
 export type DriverThunkMapper = (t: DriverThunk) => DriverThunk;
@@ -19,7 +21,8 @@ const driverThunks: DriverThunk[] = [
     ['DOM', () => makeDOMDriver('#app')],
     ['time', () => timeDriver],
     ['history', () => makeHistoryDriver()],
-    ['storage', () => storageDriver]
+    ['storage', () => storageDriver],
+    ['pixi', () => makePixiDriver()]
 ];
 
 export const buildDrivers = (fn: DriverThunkMapper) =>
