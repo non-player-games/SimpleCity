@@ -39,7 +39,11 @@ fn write_message(message: &[u8]) {
     let wrote_msg = handle.write(message).is_ok();
     let wrote_newline = handle.write(b"\n").is_ok();
     let flushed_buffer = handle.flush().is_ok();
-    assert!(wrote_msg && wrote_newline && flushed_buffer);
+
+    if !(wrote_msg && wrote_newline && flushed_buffer){
+        // @Todo send this to a logger
+        println!("Error while writing message");
+    }
 }
 
 fn listen(){
