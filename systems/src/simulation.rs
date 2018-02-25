@@ -8,7 +8,7 @@ use std::mem;
 use std::{thread, time};
 
 /// A 2-dimensional vector
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Vector2 {
     pub x: usize,
     pub y: usize,
@@ -26,6 +26,47 @@ fn v2(x: usize, y: usize) -> Vector2 {
     Vector2 { x: x, y: y }
 }
 
+#[derive(Debug)]
+pub struct SimulationManager {
+    pub population_grid: PopulationGrid,
+    pub zone_grid: ZoneGrid,
+    pub size: Vector2,
+    pub time: u64,
+    pub player_money: i64,
+    pub rci_need: RCINeed,
+}
+
+impl SimulationManager {
+   pub fn new(dimensions_v2: &Vector2) -> SimulationManager {
+        // @Incomplete we'll assign starting money differently 
+        let population_grid = PopulationGrid::new(dimensions_v2);
+        let zone_grid = ZoneGrid::new(dimensions_v2);
+        let size = dimensions_v2.clone();
+        let time: u64 = 0;
+        let player_money: i64 = 100;
+        let rci_need = RCINeed { residential: 0, commercial: 0, industrial: 0 };
+        SimulationManager {
+            population_grid,
+            zone_grid,
+            size,
+            time,
+            player_money,
+            rci_need,
+        }
+   }
+
+   pub fn advance_time(&mut self) {
+        self.time += 1;
+   }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RCINeed {
+    residential: i64,
+    commercial: i64,
+    industrial: i64,
+}
+
 /// Grid that keeps track of the population in all of the zones
 #[derive(Serialize, Deserialize)]
 pub struct PopulationGrid {
@@ -37,11 +78,11 @@ impl PopulationGrid {
     /// Returns a new population grid of size Vector2.x * Vector2.y
     /// # Argumens
     /// * `grid_size` - a Vector2 representing the dimensions of the grid
-    pub fn new(grid_size: Vector2) -> PopulationGrid {
+    pub fn new(grid_size: &Vector2) -> PopulationGrid {
         let zones: Vec<usize> = vec![0; grid_size.x * grid_size.y];
         PopulationGrid {
             zones: zones,
-            size: grid_size,
+            size: grid_size.clone(),
         }
     }
 
@@ -98,11 +139,11 @@ impl ZoneGrid {
     /// # Argumens
     /// * `grid_size` - a Vector2 representing the dimensions of the grid
     // @Copypaste
-    pub fn new(grid_size: Vector2) -> ZoneGrid {
+    pub fn new(grid_size: &Vector2) -> ZoneGrid {
         let zones: Vec<Zone> = vec![Zone::Empty; grid_size.x * grid_size.y];
         ZoneGrid {
             zones: zones,
-            size: grid_size,
+            size: grid_size.clone(),
         }
     }
 
@@ -145,7 +186,7 @@ mod tests {
             x: x_high,
             y: y_high,
         };
-        let mut population_grid = PopulationGrid::new(dimensions);
+        let mut population_grid = PopulationGrid::new(&dimensions);
 
         let zone_v2 = Vector2 { x: 0, y: 0 };
         let zone = population_grid.get_zone(&zone_v2);
@@ -156,7 +197,7 @@ mod tests {
     fn invalid_location() {
         let x_high = 16;
         let y_high = 16;
-        let mut population_grid = PopulationGrid::new(Vector2 {
+        let mut population_grid = PopulationGrid::new(&Vector2 {
             x: x_high,
             y: y_high,
         });

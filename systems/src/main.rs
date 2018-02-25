@@ -4,10 +4,10 @@ extern crate systems;
 extern crate serde_json;
 
 use regex::Regex;
-use systems::simulation::{ZoneGrid, PopulationGrid, Zone, Vector2};
+use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, ZoneGrid,  Zone};
 use std::collections::vec_deque::Drain;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::io::{self, Write};
 use std::mem;
 use std::{thread, time};
@@ -30,9 +30,13 @@ fn main() {
     listen();
 }
 
+fn send_client_message(uuid: &String, message: &String){
+    write_message(&format!("{} {}", uuid, message).as_bytes());
+}
+
 /// Sends a message to stdout
 // We might end of scratching this out
-fn send_message(message: &[u8]) {
+fn write_message(message: &[u8]) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     handle.write(message);
@@ -41,17 +45,10 @@ fn send_message(message: &[u8]) {
 }
 
 fn listen(){
-    // Initialize grids
-    let mut zone_grid = ZoneGrid::new(v2(16, 16));
-    let mut pop_grid = PopulationGrid::new(v2(16, 16));
-    let command_regex: Regex = Regex::new(r"^([0-9a-f-]{36})\s+([a-zA-Z]+)(\s+(.+))?$").unwrap();
-
-    //
     let data: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
     {
         let d = data.clone();
-        // This thread is dedicated to reading from stdin because stdin
-        // is blocking
+        // This thread is dedicated to reading from stdin because stdin blocks
         thread::spawn(move || {
             let mut input = String::from("");
             loop {
@@ -76,68 +73,101 @@ fn listen(){
     // will terminate once it receives QUIT from stdin
     let sec = time::Duration::from_millis(1000);
     let mut done = false;
-    let mut logical_time: u64 = 0;
+    let grid_size = v2(16, 16);
+    let mut sim_manager_opt: Option<SimulationManager> = None;
+    let command_regex: Regex = Regex::new(r"^([0-9a-f-]{36})\s+([a-zA-Z]+)(\s+(.+))?$").unwrap();
     while !done {
-        let mut line: String;
         // READ COMMANDS
+        //{
+        let mut messages_rcvd: Vec<String> = Vec::with_capacity(0);
         {
-            let mut drained: Vec<String> = Vec::with_capacity(0);
-            {
-                let mut d = data.lock().unwrap();
-                drained = d.drain(..).collect();
+            if let Ok(mut messages_queue) = data.lock() {
+                messages_rcvd = messages_queue.drain(..).collect();
             }
-            for d in drained {
-                line = d;
-                let client_msg_opt = parse_client_message(&command_regex, &line);
-                if client_msg_opt.is_none(){
-                    continue;
-                }
-                // @Incomplete: we may want to move this elsewhere and make methods for
-                // each command perhaps.
-                let client_msg = client_msg_opt.unwrap();
-                let cmd = &client_msg.command;
-                if  cmd.len() > 0 {
+        }
+        for message_rcvd in messages_rcvd {
+            let client_msg_opt = parse_client_message(&command_regex, &message_rcvd);
+            if client_msg_opt.is_none(){
+                continue;
+            }
+            // @Incomplete: we may want to move this elsewhere and make methods for
+            // each command perhaps.
+            let client_msg = client_msg_opt.unwrap();
+            let uuid = &client_msg.uuid;
+            let cmd = &client_msg.command;
+            // we need to check whether no commands matched despite there being a game in progress
+            let mut matched_cmd_during_active_game = true && sim_manager_opt.is_some();
+            if  cmd.len() > 0 {
+                if let Some(ref mut sim_manager) = sim_manager_opt {
                     match cmd.as_str() {
-                        "quitGame" => { 
-                            done = true; 
-                        },
-                        "startGame" => { 
-                            send_message("starting game".as_bytes());
-                        }, 
-                        "echo" => {
-                            send_message(&cmd.as_bytes());
-                        },
                         "getZoneGrid" => {
-                            let res = get_zone_grid(&zone_grid);
-                            send_message(res.as_bytes());
+                            let res = get_zone_grid(&sim_manager.zone_grid);
+                            send_client_message(uuid, &res);
                         }, 
                         "getMoney" => {
-                            send_message("0".as_bytes());
+                            let money = get_money(sim_manager.player_money);
+                            send_client_message(uuid, &money);
                         },
                         "getPeopleLocation" => {
-                            let m = get_people_location(&pop_grid);
-                            send_message(m.as_bytes());
+                            let m = get_people_location(&sim_manager.population_grid);
+                            send_client_message(uuid, &m);
                         },
                         "getTime" => {
-                            send_message(logical_time.to_string().as_bytes());
+                            let time = get_time(sim_manager.time);
+                            send_client_message(uuid, &time);
                         },
                         "getRCINeed" => {
-                            send_message("[0,4,2]".as_bytes());
+                            let rci_need = get_rci_need(&sim_manager.rci_need);
+                            send_client_message(uuid, &rci_need);
                         },
                         "setZoneGrid" => {
-                            let m = format!("set");
-                            send_message(m.as_bytes());
+                            let m = format!("OK set");
+                            send_client_message(uuid, &m);
                         },
                         _ => {
-                            let m = format!("Unknown command '{}'!", &cmd);
-                            send_message(m.as_bytes());
+                            matched_cmd_during_active_game = false;
+                        }
+                    }
+                }
+                match cmd.as_str() {
+                    "quitGame" => { 
+                        if sim_manager_opt.is_some() {
+                            send_client_message(uuid, &"OK quitting game".to_string());
+                        } else {
+                            send_client_message(uuid, &"ERR there is no game to quit".to_string());
+                        }
+                        sim_manager_opt = None;
+                        continue;
+                    },
+                    "startGame" => { 
+                        match sim_manager_opt {
+                            Some(_) => send_client_message(uuid, &"ERR game already in progress; quitGame first".to_string()),
+                            None => {
+                                sim_manager_opt = Some(start_game(&grid_size));
+                                send_client_message(uuid, &"OK starting game".to_string());
+                            },
+                        }
+                    },
+                    "shutdown" => {
+                        send_client_message(uuid, &"OK shutting down simulation systems process".to_string());
+                        done = true;
+                        continue;
+                    },
+                    "gameExists" => {
+                        send_client_message(uuid, &format!("{}", sim_manager_opt.is_some()));
+                    },
+                    _ => {
+                        if !matched_cmd_during_active_game {
+                            send_client_message(uuid, &format!("ERR Unknown command or no game in progress!"));
                         }
                     }
                 }
             }
         }
-       
-        logical_time += 1;
+        //}
+        if let Some(ref mut sim_manager) = sim_manager_opt {
+            sim_manager.advance_time(); 
+        }
         thread::sleep(sec); 
     }
 }
@@ -189,6 +219,12 @@ fn parse_client_message(re: &Regex, message: &String) -> Option<ClientMessage> {
     res
 }
 
+
+// Commands
+fn start_game(dimensions_v2: &Vector2) -> SimulationManager {
+    SimulationManager::new(dimensions_v2)
+}
+
 fn get_zone_grid(zone_grid: &ZoneGrid) -> String {
     let serialized = serde_json::to_string(&zone_grid);
     match serialized {
@@ -202,5 +238,20 @@ fn get_people_location(pop_grid: &PopulationGrid) -> String {
     match serialized {
         Ok(s) => s,
         Err(_) => String::new(),
+    }
+}
+
+fn get_money(money: i64) -> String {
+    money.to_string()
+}
+
+fn get_time(time: u64) -> String {
+    time.to_string()
+}
+
+fn get_rci_need(rci_need: &RCINeed) -> String {
+    match serde_json::to_string(&rci_need) {
+        Ok(s) => s,
+        Err(_) => String::new()
     }
 }
