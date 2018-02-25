@@ -1,15 +1,12 @@
 extern crate regex;
-#[macro_use] extern crate serde_derive;
 extern crate systems;
 extern crate serde_json;
 
 use regex::Regex;
-use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, ZoneGrid,  Zone};
-use std::collections::vec_deque::Drain;
+use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, ZoneGrid};
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
-use std::mem;
 use std::{thread, time};
 
 
@@ -39,9 +36,10 @@ fn send_client_message(uuid: &String, message: &String){
 fn write_message(message: &[u8]) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    handle.write(message);
-    handle.write(b"\n");
-    handle.flush();
+    let wrote_msg = handle.write(message).is_ok();
+    let wrote_newline = handle.write(b"\n").is_ok();
+    let flushed_buffer = handle.flush().is_ok();
+    assert!(wrote_msg && wrote_newline && flushed_buffer);
 }
 
 fn listen(){
@@ -92,6 +90,7 @@ fn listen(){
             }
             // @Incomplete: we may want to move this elsewhere and make methods for
             // each command perhaps.
+            // @Cleanup message format
             let client_msg = client_msg_opt.unwrap();
             let uuid = &client_msg.uuid;
             let cmd = &client_msg.command;
