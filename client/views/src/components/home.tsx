@@ -15,6 +15,14 @@ export interface Sinks extends BaseSinks {
     pixi?: any;
 }
 
+// TODO: move common type definition to other package
+enum ZoneType {
+    NONE,
+    RESIDENTIAL,
+    COMMERCIAL,
+    INDUSTRIAL
+}
+
 const mockGrid: number[][] = [
     [1, 0, 0, 0, 0],
     [0, 0, 0, 0, 0],
@@ -25,59 +33,94 @@ const mockGrid: number[][] = [
 
 // State
 export interface State {
-    count: number;
-    activeBuild?: string;
+    activeBuild?: ZoneType;
+    grid: number[][];
 }
 export const defaultState: State = {
-    count: 30
+    activeBuild: ZoneType.NONE,
+    grid: mockGrid
 };
 export type Reducer = (prev: State) => State | undefined;
 
 export function Home({ DOM, onion, pixi }: Sources): Sinks {
-    const action$: Stream<Reducer> = intent(DOM);
+    const action$: Stream<Reducer> = intent(DOM, pixi);
     const vdom$: Stream<VNode> = view(onion.state$);
     const gridDom$: MemoryStream<string | Element | Document | HTMLBodyElement | number[][]> = DOM.select('#grid').element().take(1);
-    const state$: Stream<number[][]> = xs.of(mockGrid);
-    pixi.events.addListener({next: (data: any) => {
-        console.log(data);
-    }});
+    const init$ = xs.of(mockGrid);
+    const grid$ = onion.state$.map(state => state.grid);
 
     return {
         DOM: vdom$,
         onion: action$,
-        pixi: concat(gridDom$, state$)
+        pixi: concat(gridDom$, init$, grid$)
     };
 }
 
-function intent(DOM: DOMSource): Stream<Reducer> {
+function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
     );
-
-    const add$: Stream<Reducer> = DOM.select('.add')
+    const changeActive$: Stream<Reducer> = DOM.select('.color-circle')
         .events('click')
-        .mapTo<Reducer>(state => ({ ...state, count: state.count + 1 }));
+        .map((evt:any): Reducer => {
+            const t: string = evt.target.dataset.type;
+            return (state) => {
+                return {
+                    ...state,
+                    activeBuild: ZoneType[t]
+                };
+            };
+        })
 
-    const subtract$: Stream<Reducer> = DOM.select('.subtract')
-        .events('click')
-        .mapTo<Reducer>(state => ({ ...state, count: state.count - 1 }));
+    const build$: Stream<Reducer> = pixi.events
+        .map((data:any): Reducer => {
+            return (state) => {
+                return {
+                    ...state,
+                    grid: updateGrid(state.grid, data.i, data.j, state.activeBuild)
+                };
+            }
+        });
 
-    return xs.merge(init$, add$, subtract$);
+    return concat(init$, xs.merge(build$, changeActive$));
+}
+
+function updateGrid(grid: number[][], i: number, j: number, buildType: ZoneType): number[][] {
+    const copy = deepCopy(grid);
+    copy[i][j] = buildType;
+    return copy
+}
+function deepCopy<T> (obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
 }
 
 function view(state$: Stream<State>): Stream<VNode> {
-    return state$.map(() => (
+    return state$.map(state => (
         <div className="fill-parent">
             <div className="info floating-panel">
             $: 100
             </div>
             <div id="grid" className="fill-paent"></div>
             <div className="actions floating-panel">
-                <button className="none color-circle" data-type="NONE"></button>
-                <button className="residential color-circle" data-type="RESIDENTIAL"></button>
-                <button className="commercial color-circle" data-type="COMMERCIAL"></button>
-                <button className="industrial color-circle" data-type="INDUSTRIAL"></button>
+                {Object.keys(ZoneType).filter(k => typeof ZoneType[k as any] === "number").map(z => {
+                    return <button
+                        className={getColorCircleClass(state.activeBuild, z)}
+                        data-type={z}
+                        on-click={setActiveZone(z)}>
+                    </button>
+                })}
             </div>
         </div>
     ));
+}
+
+function setActiveZone(z: string) {
+    return function(): void {
+        console.log(z);
+    };
+}
+
+function getColorCircleClass(active: ZoneType, t: string): string {
+    const className = `${t.toLowerCase()} color-circle`;
+    return active === ZoneType[t] ? `active ` + className : className;
 }

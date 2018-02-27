@@ -5,9 +5,7 @@ import { makeHistoryDriver } from "@cycle/history";
 import { timeDriver } from "@cycle/time";
 import { routerify, RouteMatcher } from "cyclic-router";
 import onionify from "cycle-onionify";
-import storageify from "cycle-storageify";
 import switchPath from "switch-path";
-import storageDriver from "@cycle/storage";
 
 import {makePixiDriver} from "./drivers/pixi";
 
@@ -21,7 +19,6 @@ const driverThunks: DriverThunk[] = [
     ['DOM', () => makeDOMDriver('#app')],
     ['time', () => timeDriver],
     ['history', () => makeHistoryDriver()],
-    ['storage', () => storageDriver],
     ['pixi', () => makePixiDriver()]
 ];
 
@@ -37,12 +34,7 @@ export const driverNames = driverThunks
 
 export function wrapMain(main: Component): Component {
     return routerify(
-        onionify(
-            storageify(main as any, {
-                key: 'cycle-spa-state',
-                debounce: 100 // wait for 100ms without state change before writing to localStorage
-            })
-        ),
+        onionify(main as any),
         switchPath
     ) as any;
 }

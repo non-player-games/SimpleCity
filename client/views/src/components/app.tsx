@@ -8,7 +8,7 @@ import { driverNames } from '../drivers';
 import { BaseSources, BaseSinks } from '../interfaces';
 import { RouteValue, routes, initialRoute } from '../routes';
 
-import { State as HomeState } from './home';
+import { State as HomeState, defaultState as DefaultHomeState } from './home';
 
 export interface Sources extends BaseSources {
     onion: StateSource<State>;
@@ -22,7 +22,7 @@ export interface State {
     home?: HomeState;
 }
 export const defaultState: State = {
-    home: { count: 5 },
+    home: DefaultHomeState,
 };
 export type Reducer = (prev?: State) => State | undefined;
 

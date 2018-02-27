@@ -26,7 +26,8 @@ enum ZoneType {
     COMMERCIAL,
     INDUSTRIAL
 }
-class EventProducer extends EventEmitter {}
+class EventProducer extends EventEmitter {};
+const clickEventName: string = 'click';
 
 export function makePixiDriver(): any {
     let instance: PIXI.Application; // lazy initialize chart on first stream event
@@ -34,7 +35,7 @@ export function makePixiDriver(): any {
     const rectGrid: any[][] = [[]];
     const producer = new EventProducer();
     const sink = {
-        events: fromEvent(producer, 'click')
+        events: adapt(fromEvent(producer, clickEventName))
     };
 
     function init(element: Element): void {
@@ -59,7 +60,7 @@ export function makePixiDriver(): any {
                 rectGrid[i][j] = new PIXI.Graphics();
                 instance.stage.addChild(rectGrid[i][j]);
                 rectGrid[i][j].on('pointerdown', () => {
-                    producer.emit('click', {i, j});
+                    producer.emit(clickEventName, {i, j});
                 });
                 drawRect(i, j, grid[i][j]);
             }
@@ -69,6 +70,8 @@ export function makePixiDriver(): any {
     function drawRect(i: number, j: number, t: number): void {
         const color = zoneColors[t];
         const rectangle = rectGrid[i][j];
+        // clear out the old style before redraw
+        rectangle.clear();
         rectangle.beginFill(color);
         if (color === zoneColors[ZoneType.NONE]) {
             rectangle.lineStyle(2, whiteColor);
