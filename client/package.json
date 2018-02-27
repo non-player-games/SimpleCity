@@ -5,7 +5,7 @@
   "main": "build/main.js",
   "scripts": {
     "prebuild": "rm -rf build",
-    "build": "tsc && ./link-systems.sh darwin && electron-rebuild",
+    "build": "tsc && ./scripts/link-systems.sh darwin && ./scripts/build-views.sh && electron-rebuild",
     "prestart": "npm install && npm run build",
     "start": "electron .",
     "prepackage-osx": "npm run build",
@@ -13,7 +13,7 @@
     "prepackage": "npm run build",
     "package": "electron-packager . --all --overwrite --out bin",
     "prebuild-linux": "rm -rf build",
-    "build-linux": "./link-systems.sh linux && tsc && electron-rebuild",
+    "build-linux": "./scripts/link-systems.sh linux && tsc && electron-rebuild",
     "prepackage-linux": "npm run build-linux",
     "package-linux": "electron-packager . --platform=linux --arch=x64 --overwrite --out bin",
     "prestart-linux": "npm install && npm run build-linux",

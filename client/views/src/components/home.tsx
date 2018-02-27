@@ -22,7 +22,6 @@ enum ZoneType {
     COMMERCIAL,
     INDUSTRIAL
 }
-
 const mockGrid: number[][] = [
     [1, 0, 0, 0, 0],
     [0, 0, 0, 0, 0],
@@ -33,7 +32,7 @@ const mockGrid: number[][] = [
 
 // State
 export interface State {
-    activeBuild?: ZoneType;
+    activeBuild: ZoneType;
     grid: number[][];
 }
 export const defaultState: State = {
@@ -45,6 +44,7 @@ export type Reducer = (prev: State) => State | undefined;
 export function Home({ DOM, onion, pixi }: Sources): Sinks {
     const action$: Stream<Reducer> = intent(DOM, pixi);
     const vdom$: Stream<VNode> = view(onion.state$);
+
     const gridDom$: MemoryStream<string | Element | Document | HTMLBodyElement | number[][]> = DOM.select('#grid').element().take(1);
     const init$ = xs.of(mockGrid);
     const grid$ = onion.state$.map(state => state.grid);
@@ -70,7 +70,7 @@ function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
                     activeBuild: ZoneType[t]
                 };
             };
-        })
+        });
 
     const build$: Stream<Reducer> = pixi.events
         .map((data:any): Reducer => {
@@ -88,10 +88,7 @@ function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
 function updateGrid(grid: number[][], i: number, j: number, buildType: ZoneType): number[][] {
     const copy = deepCopy(grid);
     copy[i][j] = buildType;
-    return copy
-}
-function deepCopy<T> (obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    return copy;
 }
 
 function view(state$: Stream<State>): Stream<VNode> {
@@ -102,11 +99,10 @@ function view(state$: Stream<State>): Stream<VNode> {
             </div>
             <div id="grid" className="fill-paent"></div>
             <div className="actions floating-panel">
-                {Object.keys(ZoneType).filter(k => typeof ZoneType[k as any] === "number").map(z => {
+                {Object.keys(ZoneType).filter(k => !isNaN(Number(ZoneType[k]))).map(z => {
                     return <button
                         className={getColorCircleClass(state.activeBuild, z)}
-                        data-type={z}
-                        on-click={setActiveZone(z)}>
+                        data-type={z}>
                     </button>
                 })}
             </div>
@@ -114,13 +110,11 @@ function view(state$: Stream<State>): Stream<VNode> {
     ));
 }
 
-function setActiveZone(z: string) {
-    return function(): void {
-        console.log(z);
-    };
-}
-
+// Helper functions
 function getColorCircleClass(active: ZoneType, t: string): string {
     const className = `${t.toLowerCase()} color-circle`;
     return active === ZoneType[t] ? `active ` + className : className;
+}
+function deepCopy<T> (obj: T): T {
+    return JSON.parse(JSON.stringify(obj));
 }
