@@ -159,6 +159,13 @@ impl ZoneGrid {
         }
         zone
     }
+
+    pub fn set_zone(&mut self, location: &Vector2, new_zone: Zone) {
+        let old_zone_opt = self.get_zone(location);
+        if let Some(old_zone) = old_zone_opt {
+            mem::replace(old_zone, new_zone); 
+        }
+    }
 }
 
 impl fmt::Debug for ZoneGrid {

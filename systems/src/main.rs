@@ -3,7 +3,7 @@ extern crate systems;
 extern crate serde_json;
 
 use regex::Regex;
-use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, ZoneGrid};
+use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, Zone, ZoneGrid};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
@@ -77,7 +77,8 @@ fn listen(){
     let mut done = false;
     let grid_size = v2(16, 16);
     let mut sim_manager_opt: Option<SimulationManager> = None;
-    let command_regex: Regex = Regex::new(r"^([0-9a-f-]{36})\s+([a-zA-Z]+)(\s+(.+))?$").unwrap();
+    let compiled_regex = CompiledRegex::init();
+    //let command_regex: Regex = Regex::new(r"^([0-9a-f-]{36})\s+([a-zA-Z]+)(\s+(.+))?$").unwrap();
     while !done {
         // READ COMMANDS
         //{
@@ -88,7 +89,7 @@ fn listen(){
             }
         }
         for message_rcvd in messages_rcvd {
-            let client_msg_opt = parse_client_message(&command_regex, &message_rcvd);
+            let client_msg_opt = parse_client_message(&compiled_regex.command_regex, &message_rcvd);
             if client_msg_opt.is_none(){
                 continue;
             }
@@ -124,8 +125,14 @@ fn listen(){
                             send_client_message(uuid, &rci_need);
                         },
                         "setZoneGrid" => {
-                            let m = format!("OK set");
-                            send_client_message(uuid, &m);
+                            if client_msg.arguments.is_some() {
+                                set_zone(&compiled_regex.set_zone_regex, &client_msg.arguments.unwrap(), &mut sim_manager.zone_grid);
+                            } else {
+                                let m = format!("ERR no arguments");
+                                send_client_message(uuid, &m);
+                            }
+                            //let m = format!("OK set");
+                            //send_client_message(uuid, &m);
                         },
                         _ => {
                             matched_cmd_during_active_game = false;
@@ -256,5 +263,60 @@ fn get_rci_need(rci_need: &RCINeed) -> String {
     match serde_json::to_string(&rci_need) {
         Ok(s) => s,
         Err(_) => String::new()
+    }
+}
+
+
+fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
+    let caps_opt = re.captures(args);
+    match caps_opt {
+        Some(caps) => {
+            if caps.len() == 4 {
+                let x_opt = match  caps.get(1) {
+                    Some(c) => Some(c.as_str()),
+                    None => None,
+                };
+                let y_opt = match  caps.get(2) {
+                    Some(c) => Some(c.as_str()),
+                    None => None,
+                };
+                let zone_opt = match  caps.get(3) {
+                    Some(c) => Some(c.as_str()),
+                    None => None,
+                };
+                if x_opt.is_some() && y_opt.is_some() && zone_opt.is_some() {
+                    let x = x_opt.unwrap().parse::<usize>();
+                    let y = y_opt.unwrap().parse::<usize>();
+                    let zone = zone_opt.unwrap().parse::<usize>();
+
+                    if x.is_ok() && y.is_ok() && zone.is_ok() {
+                        // get the enum that matches the zone
+                        // for now set it to residential
+                        //println!("{:?} {:?} {:?}", &x.unwrap(), &y, &zone);
+                        zone_grid.set_zone(&v2(x.unwrap(), y.unwrap()), Zone::Residential);
+
+                    }
+                }
+                
+            }
+
+        },
+        None => {}
+    }
+}
+
+struct CompiledRegex {
+    command_regex: Regex,
+    set_zone_regex: Regex,
+}
+
+impl CompiledRegex {
+    fn init() -> CompiledRegex {
+        let command_regex: Regex = Regex::new(r"^([0-9a-f-]{36})\s+([a-zA-Z]+)(\s+(.+))?$").unwrap();
+        let set_zone_regex: Regex = Regex::new(r"^(\d+)\s(\d+)\s(\d+)$").unwrap();
+        CompiledRegex {
+            command_regex,
+            set_zone_regex,
+        }
     }
 }
