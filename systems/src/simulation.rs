@@ -116,7 +116,7 @@ impl fmt::Debug for PopulationGrid {
     }
 }
 
-
+/*
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Zone {
     // @Refactor: Empty sounded like the right name for no land. But perhaps Open or Vacant are better.
@@ -125,6 +125,7 @@ pub enum Zone {
     Commercial,
     Industrial,
 }
+*/
 
 
 /// Grid that keeps track of the population in all of the zones
@@ -226,3 +227,63 @@ mod tests {
 
 
 
+/*  
+ *  Create an Enum that serializes to a number
+ *  Example Taken from https://serde.rs/enum-number.html
+*/
+
+macro_rules! enum_number {
+    ($name:ident { $($variant:ident = $value:expr, )* }) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        pub enum $name {
+            $($variant = $value,)*
+        }
+
+        impl serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where S: serde::Serializer
+            {
+                // Serialize the enum as a u64.
+                serializer.serialize_u64(*self as u64)
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where D: serde::Deserializer<'de>
+            {
+                struct Visitor;
+
+                impl<'de> serde::de::Visitor<'de> for Visitor {
+                    type Value = $name;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("positive integer")
+                    }
+
+                    fn visit_u64<E>(self, value: u64) -> Result<$name, E>
+                        where E: serde::de::Error
+                    {
+                        // Rust does not come with a simple way of converting a number to an enum, so use a big `match`.
+                        match value {
+                            $( $value => Ok($name::$variant), )*
+                            _ => Err(E::custom(
+                                format!("unknown {} value: {}",
+                                stringify!($name), value))),
+                        }
+                    }
+                }
+
+                // Deserialize the enum from a u64.
+                deserializer.deserialize_u64(Visitor)
+            }
+        }
+    }
+}
+
+enum_number!(Zone {
+    Empty = 0,
+    Residential = 1,
+    Commercial = 2,
+    Industrial = 3,
+});

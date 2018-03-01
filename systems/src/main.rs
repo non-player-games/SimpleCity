@@ -12,18 +12,6 @@ use std::{thread, time};
 
 fn main() {
     println!("Starting systems ...");
-    /*
-    // Examples: 
-    // ZoneGrid init, print, change, print
-    let serialized = serde_json::to_string(&z).unwrap();
-    println!("Serialized: {}", &serialized);
-
-    // Population Grid init
-    let p = PopulationGrid::new(v2(16, 16));
-    println!("PopulationGrid default:\n{:?}", &p);
-    let serialized_pop = serde_json::to_string(&p).unwrap();
-    println!("Serialized: {}", &serialized_pop);
-    */
     listen();
 }
 
