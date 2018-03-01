@@ -1,9 +1,10 @@
-import xs, { MemoryStream, Stream } from 'xstream';
-import concat from 'xstream/extra/concat';
-import { VNode, DOMSource } from '@cycle/dom';
-import { StateSource } from 'cycle-onionify';
+import xs, { MemoryStream, Stream } from "xstream";
+import concat from "xstream/extra/concat";
+import { VNode, DOMSource } from "@cycle/dom";
+import { StateSource } from "cycle-onionify";
 
-import { BaseSources, BaseSinks } from '../interfaces';
+import { BaseSources, BaseSinks } from "../interfaces";
+import { Input as HomeInput } from "./home"
 
 // Types
 export interface Sources extends BaseSources {
@@ -45,7 +46,7 @@ export function Home({ DOM, onion, pixi }: Sources): Sinks {
     const action$: Stream<Reducer> = intent(DOM, pixi);
     const vdom$: Stream<VNode> = view(onion.state$);
 
-    const gridDom$: MemoryStream<string | Element | Document | HTMLBodyElement | number[][]> = DOM.select('#grid').element().take(1);
+    const gridDom$: MemoryStream<HomeInput> = DOM.select("#grid").element().take(1);
     const init$ = xs.of(mockGrid);
     const grid$ = onion.state$.map(state => state.grid);
 
@@ -60,8 +61,8 @@ function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
     );
-    const changeActive$: Stream<Reducer> = DOM.select('.color-circle')
-        .events('click')
+    const changeActive$: Stream<Reducer> = DOM.select(".color-circle")
+        .events("click")
         .map((evt:any): Reducer => {
             const t: string = evt.target.dataset.type;
             return (state) => {
