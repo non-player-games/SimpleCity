@@ -1,13 +1,12 @@
-import {initWindow} from "./window";
+import { initWindow } from "./window";
 import handlers from "./handlers";
-import {initSystem} from "./comms";
+import { start } from "./comms";
 
 // create window
-initWindow();
-
-// define ipc message handling
-handlers();
+const window = initWindow();
 
 // Initialize communications with system
-// Does not do anything very interesting at the moment
-initSystem();
+const events$ = start();
+
+// define ipc message handling
+handlers(window, events$);

@@ -4,7 +4,7 @@ import { adapt } from "@cycle/run/lib/adapt";
 import fromEvent from "xstream/extra/fromEvent";
 import * as EventEmitter from "events";
 
-import {ZoneType} from "../models/Zone";
+import { ZoneType } from "../models/Zone";
 
 export interface Sink {
     events: Stream<Event>;

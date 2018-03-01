@@ -1,12 +1,12 @@
-import {ipcMain} from "electron";
-import glue from "./glue";
+// import { ipcMain } from "electron";
+
+import { eventName, EventProducer } from "./comms";
 
 /**
  * set up ipc binding between the renderer to actual function
  */
-export default function () {
-    // set up routing
-    ipcMain.on("fib", (event, arg) => {
-        event.sender.send(glue.calc(arg));
+export default function (window, events$: EventProducer) {
+    events$.on(eventName, (data: string) => {
+        window.webContents.send("ipc-data", data);
     });
 }

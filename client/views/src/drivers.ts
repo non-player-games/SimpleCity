@@ -7,7 +7,8 @@ import { routerify, RouteMatcher } from "cyclic-router";
 import onionify from "cycle-onionify";
 import switchPath from "switch-path";
 
-import {makePixiDriver} from "./drivers/pixi";
+import { makePixiDriver } from "./drivers/pixi";
+import { makeIPCDriver } from "./drivers/ipc";
 
 import { Component } from "./interfaces";
 
@@ -16,10 +17,11 @@ export type DriverThunkMapper = (t: DriverThunk) => DriverThunk;
 
 // Set of Drivers used in this App
 const driverThunks: DriverThunk[] = [
-    ['DOM', () => makeDOMDriver('#app')],
-    ['time', () => timeDriver],
-    ['history', () => makeHistoryDriver()],
-    ['pixi', () => makePixiDriver()]
+    ["DOM", () => makeDOMDriver('#app')],
+    ["time", () => timeDriver],
+    ["history", () => makeHistoryDriver()],
+    ["pixi", () => makePixiDriver()],
+    ["ipc", () => makeIPCDriver()]
 ];
 
 export const buildDrivers = (fn: DriverThunkMapper) =>
@@ -30,7 +32,7 @@ export const buildDrivers = (fn: DriverThunkMapper) =>
 
 export const driverNames = driverThunks
     .map(([n, t]) => n)
-    .concat(['onion', 'router']);
+    .concat(["onion", "router"]);
 
 export function wrapMain(main: Component): Component {
     return routerify(

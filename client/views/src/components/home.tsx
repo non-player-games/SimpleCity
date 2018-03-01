@@ -4,25 +4,20 @@ import { VNode, DOMSource } from "@cycle/dom";
 import { StateSource } from "cycle-onionify";
 
 import { BaseSources, BaseSinks } from "../interfaces";
-import { Input as HomeInput } from "./home"
+import { Input as PixiInput } from "../drivers/pixi"
+import { ZoneType } from "../models/Zone";
 
 // Types
 export interface Sources extends BaseSources {
     onion: StateSource<State>;
     pixi: any; // TODO define the source from driver
+    ipc: any;
 }
 export interface Sinks extends BaseSinks {
     onion?: Stream<Reducer>;
-    pixi?: any;
+    pixi?: Stream<PixiInput>;
 }
 
-// TODO: move common type definition to other package
-enum ZoneType {
-    NONE,
-    RESIDENTIAL,
-    COMMERCIAL,
-    INDUSTRIAL
-}
 const mockGrid: number[][] = [
     [1, 0, 0, 0, 0],
     [0, 0, 0, 0, 0],
@@ -42,13 +37,16 @@ export const defaultState: State = {
 };
 export type Reducer = (prev: State) => State | undefined;
 
-export function Home({ DOM, onion, pixi }: Sources): Sinks {
+export function Home({ DOM, onion, pixi, ipc }: Sources): Sinks {
     const action$: Stream<Reducer> = intent(DOM, pixi);
     const vdom$: Stream<VNode> = view(onion.state$);
 
     const gridDom$: MemoryStream<HomeInput> = DOM.select("#grid").element().take(1);
     const init$ = xs.of(mockGrid);
     const grid$ = onion.state$.map(state => state.grid);
+    ipc.subscribe({
+        next: console.log
+    });
 
     return {
         DOM: vdom$,

@@ -8,7 +8,7 @@ let mainWindow;
 
 // when need to route mainWindow to different page, create a function here
 
-export function initWindow () {
+export function initWindow (): any {
     // This method will be called when Electron has finished
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
@@ -30,6 +30,8 @@ export function initWindow () {
             createWindow();
         }
     });
+
+    return mainWindow;
 }
 
 function createWindow () {

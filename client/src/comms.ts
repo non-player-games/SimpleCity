@@ -1,39 +1,34 @@
 import * as path from "path";
+import * as EventEmitter from "events";
 import {spawn} from "child_process";
 
 const systemFile = path.join(__dirname, "../systems/systems");
+export const eventName = "ipc-data";
 
-const child = spawn(systemFile, []);
+let process = null;
+export class EventProducer extends EventEmitter {}
 
-child.stdout.on("data", (data: Buffer) => {
-    let s = new Buffer(data).toString("ascii");
-    if (s.startsWith("SYSTEM:")) {
-        console.log(`child stdout:\n${s}`);
-    }
-});
+export function start (): EventProducer {
+    const producer = new EventProducer();
+    process = spawn(systemFile, []);
+    process.stdout.on("data", (data: Buffer) => {
+        const dataString = new Buffer(data).toString("ascii");
+        producer.emit(eventName, dataString);
+        console.log(`process stdout:\n${dataString}`);
+    });
 
-child.stderr.on("data", (data: Buffer) => {
-    console.error(`child stderr:\n${data}`);
-});
+    process.stderr.on("data", (data: Buffer) => {
+        console.error(`process stderr:\n${data}`);
+    });
 
-function sendMessage(messages, timeout) {
-    setTimeout(function () {
-        if (messages.length > 0) {
-            let m = messages[0];
-            console.log("sending " + m);
-            child.stdin.write(m + "\n");
-            sendMessage(messages.slice(1), timeout);
-        }
-    }, timeout);
+    return producer;
 }
 
-export function initSystem () {
-    let messages = [
-        "Message 1",
-        "Message 2",
-        "Message 3",
-        "QUIT"
-    ];
-
-    sendMessage(messages, 4000);
+export function send (message: string) {
+    if (!process) {
+        console.error("Unable to find process (could be null)");
+        return;
+    }
+    console.debug("sending " + message);
+    process.stdin.write(message + "\n");
 }
