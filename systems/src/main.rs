@@ -257,39 +257,17 @@ fn get_rci_need(rci_need: &RCINeed) -> String {
 
 fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
     let caps_opt = re.captures(args);
-    match caps_opt {
-        Some(caps) => {
-            if caps.len() == 4 {
-                let x_opt = match  caps.get(1) {
-                    Some(c) => Some(c.as_str()),
-                    None => None,
-                };
-                let y_opt = match  caps.get(2) {
-                    Some(c) => Some(c.as_str()),
-                    None => None,
-                };
-                let zone_opt = match  caps.get(3) {
-                    Some(c) => Some(c.as_str()),
-                    None => None,
-                };
-                if x_opt.is_some() && y_opt.is_some() && zone_opt.is_some() {
-                    let x = x_opt.unwrap().parse::<usize>();
-                    let y = y_opt.unwrap().parse::<usize>();
-                    let zone = zone_opt.unwrap().parse::<usize>();
-
-                    if x.is_ok() && y.is_ok() && zone.is_ok() {
-                        // get the enum that matches the zone
-                        // for now set it to residential
-                        //println!("{:?} {:?} {:?}", &x.unwrap(), &y, &zone);
-                        zone_grid.set_zone(&v2(x.unwrap(), y.unwrap()), Zone::Residential);
-
-                    }
-                }
-                
+    if let Some(caps) = caps_opt {
+        if caps.len() == 4 {
+            let x_opt    = caps.get(1).map(|c| c.as_str().parse::<usize>().ok()).unwrap_or(None);
+            let y_opt    = caps.get(2).map(|c| c.as_str().parse::<usize>().ok()).unwrap_or(None);
+            let zone_opt = caps.get(3).map(|c| serde_json::from_str(c.as_str()).unwrap_or(None)).unwrap_or(None);
+            
+            if let (Some(x), Some(y), Some(zone)) = (x_opt, y_opt, zone_opt) {
+                zone_grid.set_zone(&v2(x, y), zone);
             }
+        }
 
-        },
-        None => {}
     }
 }
 
