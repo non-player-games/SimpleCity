@@ -3,7 +3,7 @@ extern crate systems;
 extern crate serde_json;
 
 use regex::Regex;
-use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, Zone, ZoneGrid};
+use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, ZoneGrid};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
@@ -239,7 +239,7 @@ fn get_people_location(pop_grid: &PopulationGrid) -> String {
     }
 }
 
-fn get_money(money: i64) -> String {
+fn get_money(money: u64) -> String {
     money.to_string()
 }
 
@@ -264,7 +264,7 @@ fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
             let zone_opt = caps.get(3).map(|c| serde_json::from_str(c.as_str()).unwrap_or(None)).unwrap_or(None);
             
             if let (Some(x), Some(y), Some(zone)) = (x_opt, y_opt, zone_opt) {
-                zone_grid.set_zone(&v2(x, y), zone);
+                zone_grid.set_zone(&v2(x, y), &zone);
             }
         }
 
