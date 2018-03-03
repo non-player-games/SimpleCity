@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "ffi": "github:node-ffi/node-ffi.git#60282c29eb29eafb5d9b969b794a5ddf3e31e9d5",
-    "pixi.js": "^4.7.0"
+    "pixi.js": "^4.7.0",
+    "rxjs": "^5.5.6"
   }
 }

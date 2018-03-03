@@ -1,34 +1,34 @@
 import * as path from "path";
-import * as EventEmitter from "events";
-import {spawn} from "child_process";
+import { Observable, Subject } from "rxjs";
+import { spawn } from "child_process";
 
+export type Producer = Observable<string>;
+export type Consumer = Observable<string>;
+
+// TODO: change the path to be configuration based
 const systemFile = path.join(__dirname, "../systems/systems");
-export const eventName = "ipc-data";
 
-let process = null;
-export class EventProducer extends EventEmitter {}
-
-export function start (): EventProducer {
-    const producer = new EventProducer();
-    process = spawn(systemFile, []);
-    process.stdout.on("data", (data: Buffer) => {
-        const dataString = new Buffer(data).toString("ascii");
-        producer.emit(eventName, dataString);
-        console.log(`process stdout:\n${dataString}`);
-    });
-
-    process.stderr.on("data", (data: Buffer) => {
-        console.error(`process stderr:\n${data}`);
-    });
-
-    return producer;
+export function createSource (): Consumer {
+    return new Subject<string>();
 }
 
-export function send (message: string) {
-    if (!process) {
-        console.error("Unable to find process (could be null)");
-        return;
-    }
-    console.debug("sending " + message);
-    process.stdin.write(message + "\n");
+// TODO: change string type to be consise type
+export function start (input: Consumer): Producer {
+    const output = Observable.create(observer => {
+        const process = spawn(systemFile, []);
+        process.stdout.on("data", (data: Buffer) => {
+            const dataString = new Buffer(data).toString("ascii");
+            console.log(`process stdout:\n${dataString}`);
+            observer.next(dataString);
+        });
+        process.stderr.on("data", (data: Buffer) => {
+            console.error(`process stderr:\n${data}`);
+            observer.error(data);
+        });
+
+        input.subscribe((data: string) => {
+            process.stdin.write(data + "\n");
+        });
+    });
+    return output;
 }
