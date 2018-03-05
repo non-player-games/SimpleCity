@@ -1,11 +1,8 @@
 extern crate serde;
-extern crate serde_derive;
 extern crate serde_json;
 
 use std::fmt;
-use std::io::{self, Write};
 use std::mem;
-use std::{thread, time};
 
 /// A 2-dimensional vector
 #[derive(Clone, Serialize, Deserialize)]
@@ -20,11 +17,11 @@ impl fmt::Debug for Vector2 {
     }
 }
 
-/// Convenience function for making Vector2
-// @Copypaste
+/* @Copypaste
 fn v2(x: usize, y: usize) -> Vector2 {
     Vector2 { x: x, y: y }
 }
+*/
 
 #[derive(Debug)]
 pub struct SimulationManager {
@@ -32,7 +29,7 @@ pub struct SimulationManager {
     pub zone_grid: ZoneGrid,
     pub size: Vector2,
     pub time: u64,
-    pub player_money: i64,
+    pub player_money: u64,
     pub rci_need: RCINeed,
 }
 
@@ -43,7 +40,7 @@ impl SimulationManager {
         let zone_grid = ZoneGrid::new(dimensions_v2);
         let size = dimensions_v2.clone();
         let time: u64 = 0;
-        let player_money: i64 = 100;
+        let player_money: u64 = 100;
         let rci_need = RCINeed { residential: 0, commercial: 0, industrial: 0 };
         SimulationManager {
             population_grid,
@@ -55,9 +52,24 @@ impl SimulationManager {
         }
    }
 
-   pub fn advance_time(&mut self) {
+    pub fn advance_time(&mut self) {
         self.time += 1;
-   }
+    }
+
+    pub fn buy_zone(&mut self, location: &Vector2, new_zone: &Zone) -> bool {
+        let cost = match new_zone {
+            &Zone::Empty => 0,
+            &Zone::Residential => 2,
+            &Zone::Commercial => 2,
+            &Zone::Industrial => 2,
+        };
+
+        if cost <= self.player_money {
+            self.player_money -= cost;
+            return self.zone_grid.set_zone(location, new_zone)
+        }
+        return false
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -108,9 +120,9 @@ impl fmt::Debug for PopulationGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, e) in self.zones.iter().enumerate() {
             if i > 0 && i % self.size.x == 0 {
-                write!(f, "\n");
+                let _ = write!(f, "\n");
             }
-            write!(f, "{:?}", e);
+            let _ = write!(f, "{:?}", e);
         }
         Ok(())
     }
@@ -161,21 +173,25 @@ impl ZoneGrid {
         zone
     }
 
-    pub fn set_zone(&mut self, location: &Vector2, new_zone: Zone) {
+    pub fn set_zone(&mut self, location: &Vector2, new_zone: &Zone) -> bool {
         let old_zone_opt = self.get_zone(location);
         if let Some(old_zone) = old_zone_opt {
-            mem::replace(old_zone, new_zone); 
+            mem::replace(old_zone, *new_zone); 
+            return true
         }
+        return false
     }
+
+    
 }
 
 impl fmt::Debug for ZoneGrid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, e) in self.zones.iter().enumerate() {
             if i > 0 && i % self.size.x == 0 {
-                write!(f, "\n");
+                let _ = write!(f, "\n");
             }
-            write!(f, "{:?} ", e);
+            let _ = write!(f, "{:?} ", e);
         }
         Ok(())
     }
