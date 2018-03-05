@@ -11,5 +11,6 @@ module.exports = {
         filename: 'bundle.[hash].js',
         path: appPath('build'),
         publicPath: './'
-    }
+    },
+    target: 'electron'
 };

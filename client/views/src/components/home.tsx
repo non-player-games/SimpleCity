@@ -41,10 +41,10 @@ export function Home({ DOM, onion, pixi, ipc }: Sources): Sinks {
     const action$: Stream<Reducer> = intent(DOM, pixi);
     const vdom$: Stream<VNode> = view(onion.state$);
 
-    const gridDom$: MemoryStream<HomeInput> = DOM.select("#grid").element().take(1);
+    const gridDom$: MemoryStream<PixiInput> = DOM.select("#grid").element().take(1);
     const init$ = xs.of(mockGrid);
     const grid$ = onion.state$.map(state => state.grid);
-    ipc.subscribe({
+    ipc.events.subscribe({
         next: console.log
     });
 
@@ -62,7 +62,7 @@ function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
     const changeActive$: Stream<Reducer> = DOM.select(".color-circle")
         .events("click")
         .map((evt:any): Reducer => {
-            const t: string = evt.target.dataset.type;
+            const t: keyof typeof ZoneType = evt.target.dataset.type;
             return (state) => {
                 return {
                     ...state,
@@ -98,7 +98,9 @@ function view(state$: Stream<State>): Stream<VNode> {
             </div>
             <div id="grid" className="fill-paent"></div>
             <div className="actions floating-panel">
-                {Object.keys(ZoneType).filter(k => !isNaN(Number(ZoneType[k]))).map(z => {
+                {Object.keys(ZoneType)
+                    .filter((k: keyof typeof ZoneType) => !isNaN(Number(ZoneType[k])))
+                    .map((z: keyof typeof ZoneType) => {
                     return <button
                         className={getColorCircleClass(state.activeBuild, z)}
                         data-type={z}>
@@ -110,7 +112,7 @@ function view(state$: Stream<State>): Stream<VNode> {
 }
 
 // Helper functions
-function getColorCircleClass(active: ZoneType, t: string): string {
+function getColorCircleClass(active: ZoneType, t: keyof typeof ZoneType): string {
     const className = `${t.toLowerCase()} color-circle`;
     return active === ZoneType[t] ? `active ` + className : className;
 }

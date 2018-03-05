@@ -3,7 +3,7 @@ import handlers from "./handlers";
 import { start, createSource } from "./comms";
 
 // create window
-const window = initWindow();
+const mainWindow = initWindow();
 
 const input$ = createSource();
 
@@ -12,7 +12,7 @@ const events$ = start(input$);
 
 // define ipc message handling
 handlers({
-    window,
+    window: mainWindow,
     systems: events$,
     events: input$
 });

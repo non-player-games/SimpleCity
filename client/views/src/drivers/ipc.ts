@@ -1,4 +1,4 @@
-import {ipcMain} from "electron";
+import { ipcRenderer } from "electron";
 import xs, { Stream } from "xstream";
 import { adapt } from "@cycle/run/lib/adapt";
 import fromEvent from "xstream/extra/fromEvent";
@@ -19,7 +19,7 @@ export function makeIPCDriver(): (m: Stream<Input>) => Sink {
     };
 
     return function IPCDriver(sink$: Stream<Input>): Sink {
-        ipcMain.on("message", (data: any) => {
+        ipcRenderer.on("message", (data: any) => {
             producer.emit(eventName, data);
         });
         return sink;

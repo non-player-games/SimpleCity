@@ -2,6 +2,7 @@ import * as path from "path";
 import { Observable, Subject } from "rxjs";
 import { spawn } from "child_process";
 
+// TODO: change string type to be consise type
 export type Producer = Observable<string>;
 export type Consumer = Observable<string>;
 
@@ -12,7 +13,6 @@ export function createSource (): Consumer {
     return new Subject<string>();
 }
 
-// TODO: change string type to be consise type
 export function start (input: Consumer): Producer {
     const output = Observable.create(observer => {
         const process = spawn(systemFile, []);

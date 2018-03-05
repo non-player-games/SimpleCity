@@ -14,7 +14,7 @@ interface Input {
 export default function (input: Input) {
     input.systems.subscribe(sendMessageToAll(input.window));
     ipcMain.on("ipc-message", ( args: any ) => {
-        console.debug(args);
+        input.events.next(args);
     });
 }
 
@@ -28,6 +28,10 @@ export default function (input: Input) {
  */
 function sendMessageToAll(window): (d: string) => void {
     return (data: string) => {
-        window.webContents.send("ipc-data", data);
+        if (window) {
+            window.webContents.send("ipc-data", data);
+        } else {
+            console.log("Window not initialized yet");
+        }
     };
 }
