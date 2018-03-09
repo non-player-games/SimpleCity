@@ -9,8 +9,9 @@ export interface Sink {
 }
 export type Input = any;
 
+// TODO: change EventEmitter to RxJS Observable for consistency
 class EventProducer extends EventEmitter {};
-const eventName: string = "click";
+const eventName: string = "ipc-message";
 
 export function makeIPCDriver(): (m: Stream<Input>) => Sink {
     const producer = new EventProducer();
@@ -19,8 +20,20 @@ export function makeIPCDriver(): (m: Stream<Input>) => Sink {
     };
 
     return function IPCDriver(sink$: Stream<Input>): Sink {
-        ipcRenderer.on("message", (data: any) => {
+        ipcRenderer.on("ipc-message", (data: any) => {
             producer.emit(eventName, data);
+        });
+        sink$.subscribe({
+            next: (data: any): void => {
+                console.log("Sending data to main process", data);
+                ipcRenderer.send("ipc-message", data);
+            },
+            error: (err: any): void => {
+                console.error("ipc sink sends error", err);
+            },
+            complete: (): void => {
+                console.log("ipc sink closes sink");
+            }
         });
         return sink;
     }

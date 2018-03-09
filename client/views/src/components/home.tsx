@@ -16,6 +16,15 @@ export interface Sources extends BaseSources {
 export interface Sinks extends BaseSinks {
     onion?: Stream<Reducer>;
     pixi?: Stream<PixiInput>;
+    ipc?: Stream<Action>;
+}
+interface Action {
+    type: string;
+    payload?: string;
+}
+interface Intent {
+    actions: Stream<Reducer>,
+    requests: Stream<Action>
 }
 
 const mockGrid: number[][] = [
@@ -27,35 +36,43 @@ const mockGrid: number[][] = [
 ];
 
 // State
+enum GameState {
+    STOP,
+    START
+}
 export interface State {
     activeBuild: ZoneType;
     grid: number[][];
+    gameState: GameState
 }
 export const defaultState: State = {
     activeBuild: ZoneType.NONE,
-    grid: mockGrid
+    grid: mockGrid,
+    gameState: GameState.STOP
 };
 export type Reducer = (prev: State) => State | undefined;
 
 export function Home({ DOM, onion, pixi, ipc }: Sources): Sinks {
-    const action$: Stream<Reducer> = intent(DOM, pixi);
+    const intent: Intent = intentFn(DOM, pixi, ipc);
     const vdom$: Stream<VNode> = view(onion.state$);
 
     const gridDom$: MemoryStream<PixiInput> = DOM.select("#grid").element().take(1);
     const init$ = xs.of(mockGrid);
     const grid$ = onion.state$.map(state => state.grid);
+    // debug usage
     ipc.events.subscribe({
         next: console.log
     });
 
     return {
         DOM: vdom$,
-        onion: action$,
-        pixi: concat(gridDom$, init$, grid$)
+        onion: intent.actions,
+        pixi: concat(gridDom$, init$, grid$),
+        ipc: intent.requests
     };
 }
 
-function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
+function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
     );
@@ -70,6 +87,18 @@ function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
                 };
             };
         });
+    const startEvent$: Stream<Action> = DOM.select(".start-button")
+        .events("click")
+        .mapTo<Action>({type: "startGame"});
+
+    const startEventReducer$: Stream<Reducer> = DOM.select(".start-button")
+        .events("click")
+        .mapTo<Reducer>((state) => {
+            return {
+                ...state,
+                gameState: GameState.START
+            };
+        });
 
     const build$: Stream<Reducer> = pixi.events
         .map((data:any): Reducer => {
@@ -81,7 +110,10 @@ function intent(DOM: DOMSource, pixi: any): Stream<Reducer> {
             }
         });
 
-    return concat(init$, xs.merge(build$, changeActive$));
+    return {
+        actions: concat(init$, xs.merge(build$, changeActive$, startEventReducer$)),
+        requests: startEvent$
+    };
 }
 
 function updateGrid(grid: number[][], i: number, j: number, buildType: ZoneType): number[][] {
@@ -106,6 +138,9 @@ function view(state$: Stream<State>): Stream<VNode> {
                         data-type={z}>
                     </button>
                 })}
+            </div>
+            <div className="options floating-panel">
+                <button className="start-button">{(state.gameState === GameState.START) ? 'Stop' : 'Start'}</button>
             </div>
         </div>
     ));
