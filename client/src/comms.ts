@@ -3,6 +3,9 @@ import { Observable, Subject } from "rxjs";
 import { spawn } from "child_process";
 import * as uuid from "uuid/v4";
 
+// internal memory to track which uuid for which method call
+const memory = {};
+
 // TODO: change string type to be consise type
 export interface Action {
     type: string;
@@ -26,19 +29,13 @@ export function start (input: Consumer): Producer {
             console.log(`process stdout:\n${dataString}`);
             // TODO: process data string as `uuid methodName args`
             const parts = dataString.split(" ");
-            if (parts.length < 2) {
-                console.error("Got unsupported format of message from system. Ignoring ...", dataString);
-                return;
+            const msgUUID = parts[0];
+            if (memory[msgUUID]) {
+                observer.next(handler(memory[msgUUID])(dataString));
+                delete memory[msgUUID];
+            } else {
+                console.error("receive unknown uuid method reply", dataString);
             }
-            const type = parts[1];
-            let payload = "";
-            if (parts.length === 3) {
-                payload = parts[2];
-            }
-            observer.next({
-                type,
-                payload
-            });
         });
         process.stderr.on("data", (data: Buffer) => {
             console.error(`process stderr:\n${data}`);
@@ -49,15 +46,46 @@ export function start (input: Consumer): Producer {
         });
 
         input.subscribe((action: Action) => {
-            let msg = `${uuid()} ${action.type}`;
+            const msgUUID = uuid();
+            let msg = `${msgUUID} ${action.type}`;
             if (action.payload) {
                 msg = msg + ` ${action.payload}`;
             }
             msg = msg + "\n";
             console.log("communication got message", action, msg);
+            memory[msgUUID] = action.type;
             process.stdin.write(msg);
-            process.stdin.end();
         });
     });
     return output;
+}
+
+// handlers for handling reply from the system
+function handler (action: string): (d: string) => Action {
+    return (reply: string): Action => {
+        switch (action) {
+        case "getZoneGrid":
+            return {
+                type: action,
+                payload: buildGrid(reply.split(" ")[1])
+            };
+        }
+    };
+}
+
+function buildGrid(rawData: string): number[][] {
+    try {
+        const data = JSON.parse(rawData);
+        const grid = [];
+        for (let i = 0; i < data.size.x; i ++) {
+            grid[i] = [];
+            for (let j = 0; j < data.size.y; j ++) {
+                grid[i][j] = data.zones[i * data.size.x + j];
+            }
+        }
+        return grid;
+    } catch (e) {
+        console.error("Failed to parse JSON for Grid data", rawData);
+        return [];
+    }
 }

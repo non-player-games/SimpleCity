@@ -11,8 +11,8 @@ export interface Sink {
 }
 export type Input = string | Element | Document | HTMLBodyElement | number[][];
 
-const width: number = 512;
-const height: number = 512;
+const width: number = 640;
+const height: number = 640;
 const rectSize: number = 32;
 const rectPadding: number = 8;
 

@@ -1,9 +1,9 @@
-import { initWindow } from "./window";
+import { initWindow, state } from "./window";
 import handlers from "./handlers";
 import { start, createSource } from "./comms";
 
 // create window
-const mainWindow = initWindow();
+initWindow();
 
 const input$ = createSource();
 
@@ -12,7 +12,7 @@ const events$ = start(input$);
 
 // define ipc message handling
 handlers({
-    window: mainWindow,
+    windowState: state,
     systems: events$,
     events: input$
 });

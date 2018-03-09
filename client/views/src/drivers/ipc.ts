@@ -20,7 +20,7 @@ export function makeIPCDriver(): (m: Stream<Input>) => Sink {
     };
 
     return function IPCDriver(sink$: Stream<Input>): Sink {
-        ipcRenderer.on("ipc-message", (data: any) => {
+        ipcRenderer.on("ipc-message", (_: any, data: any) => {
             producer.emit(eventName, data);
         });
         sink$.subscribe({

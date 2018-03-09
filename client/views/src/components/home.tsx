@@ -27,14 +27,6 @@ interface Intent {
     requests: Stream<Action>
 }
 
-const mockGrid: number[][] = [
-    [1, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0],
-    [0, 1, 1, 0, 2],
-    [0, 1, 1, 0, 2]
-];
-
 // State
 enum GameState {
     STOP,
@@ -47,7 +39,7 @@ export interface State {
 }
 export const defaultState: State = {
     activeBuild: ZoneType.NONE,
-    grid: mockGrid,
+    grid: [],
     gameState: GameState.STOP
 };
 export type Reducer = (prev: State) => State | undefined;
@@ -57,7 +49,11 @@ export function Home({ DOM, onion, pixi, ipc }: Sources): Sinks {
     const vdom$: Stream<VNode> = view(onion.state$);
 
     const gridDom$: MemoryStream<PixiInput> = DOM.select("#grid").element().take(1);
-    const init$ = xs.of(mockGrid);
+    const init$ = ipc.events
+        .filter((data: any) => !!data)
+        .filter((data: any) => data.type === "getZoneGrid")
+        .take(1)
+        .map((d: any) => d.payload);
     const grid$ = onion.state$.map(state => state.grid);
     // debug usage
     ipc.events.subscribe({
@@ -76,6 +72,7 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
     );
+
     const changeActive$: Stream<Reducer> = DOM.select(".color-circle")
         .events("click")
         .map((evt:any): Reducer => {
@@ -90,6 +87,9 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
     const startEvent$: Stream<Action> = DOM.select(".start-button")
         .events("click")
         .mapTo<Action>({type: "startGame"});
+    const startEvent2$: Stream<Action> = DOM.select(".start-button")
+        .events("click")
+        .mapTo<Action>({type: "getZoneGrid"});
 
     const startEventReducer$: Stream<Reducer> = DOM.select(".start-button")
         .events("click")
@@ -100,6 +100,24 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
             };
         });
 
+    const systemEvents$: Stream<Reducer> = ipc.events
+        .map((action: any): Reducer => {
+            console.log("got event in views", action);
+            return (state) => {
+                if (!action) {
+                    return state;
+                }
+                switch (action.type) {
+                    case "getZoneGrid":
+                    return {
+                        ...state,
+                        grid: action.payload
+                    };
+                    default:
+                        return state;
+                }
+            }
+        });
     const build$: Stream<Reducer> = pixi.events
         .map((data:any): Reducer => {
             return (state) => {
@@ -111,8 +129,8 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
         });
 
     return {
-        actions: concat(init$, xs.merge(build$, changeActive$, startEventReducer$)),
-        requests: startEvent$
+        actions: concat(init$, xs.merge(build$, changeActive$, startEventReducer$, systemEvents$)),
+        requests: xs.merge(startEvent$, startEvent2$)
     };
 }
 
