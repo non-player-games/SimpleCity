@@ -61,7 +61,7 @@ fn listen(){
     // @Incomplete this is the skeleton of what the systems side game/simulation loop
     // pause it every second to simulate it doing processing
     // will terminate once it receives QUIT from stdin
-    //let sec = time::Duration::from_millis(1000);
+    let mut game_paused = false;
     let base_sleep_time: u64 = 1000;
     let mut sleep_time: u64= base_sleep_time;
 
@@ -92,8 +92,9 @@ fn listen(){
             let cmd = &client_msg.command;
             // we need to check whether no commands matched despite there being a game in progress
             let mut matched_cmd_during_active_game = true && sim_manager_opt.is_some();
-            if  cmd.len() > 0 {
-                if let Some(ref mut sim_manager) = sim_manager_opt {
+            if cmd.len() > 0 {
+                if !game_paused && sim_manager_opt.is_some() {
+                    let ref mut sim_manager = sim_manager_opt.as_mut().unwrap();
                     match cmd.as_str() {
                         "getZoneGrid" => {
                             let res = get_zone_grid(&sim_manager.zone_grid);
@@ -122,8 +123,6 @@ fn listen(){
                                 let m = format!("ERR no arguments");
                                 send_client_message(uuid, &m);
                             }
-                            //let m = format!("OK set");
-                            //send_client_message(uuid, &m);
                         },
                         "setSpeed" => {
                             if let Some(ref speedup_factor) = client_msg.arguments {
@@ -161,9 +160,10 @@ fn listen(){
                         done = true;
                         continue;
                     },
-                    "gameExists" => {
-                        send_client_message(uuid, &format!("{}", sim_manager_opt.is_some()));
-                    },
+                    "gameExists" => send_client_message(uuid, &format!("{}", sim_manager_opt.is_some())),
+                    "pause"      => game_paused = true,
+                    "unpause"    => game_paused = false,
+                    "isPaused"   => send_client_message(uuid, &format!("{}", game_paused.to_string())),
                     _ => {
                         if !matched_cmd_during_active_game {
                             send_client_message(uuid, &format!("ERR Unknown command or no game in progress!"));
@@ -174,7 +174,9 @@ fn listen(){
         }
         //}
         if let Some(ref mut sim_manager) = sim_manager_opt {
-            sim_manager.advance_time(); 
+            if !game_paused { 
+                sim_manager.advance_time(); 
+            }
         }
         thread::sleep(time::Duration::from_millis(sleep_time)); 
     }
