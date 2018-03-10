@@ -61,7 +61,10 @@ fn listen(){
     // @Incomplete this is the skeleton of what the systems side game/simulation loop
     // pause it every second to simulate it doing processing
     // will terminate once it receives QUIT from stdin
-    let sec = time::Duration::from_millis(1000);
+    //let sec = time::Duration::from_millis(1000);
+    let base_sleep_time: u64 = 1000;
+    let mut sleep_time: u64= base_sleep_time;
+
     let mut done = false;
     let grid_size = v2(16, 16);
     let mut sim_manager_opt: Option<SimulationManager> = None;
@@ -122,6 +125,13 @@ fn listen(){
                             //let m = format!("OK set");
                             //send_client_message(uuid, &m);
                         },
+                        "setSpeed" => {
+                            if let Some(ref speedup_factor) = client_msg.arguments {
+                                if let Ok(new_sleep_time) = updated_sleep_time(speedup_factor, base_sleep_time) {
+                                    sleep_time = new_sleep_time;
+                                }
+                            }
+                        }
                         _ => {
                             matched_cmd_during_active_game = false;
                         }
@@ -166,7 +176,7 @@ fn listen(){
         if let Some(ref mut sim_manager) = sim_manager_opt {
             sim_manager.advance_time(); 
         }
-        thread::sleep(sec); 
+        thread::sleep(time::Duration::from_millis(sleep_time)); 
     }
 }
 
@@ -269,6 +279,15 @@ fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
         }
 
     }
+}
+
+fn updated_sleep_time(speedup_factor_str: &String, base: u64) -> Result<u64, ()> {
+    if let Ok(speedup_factor) = speedup_factor_str.parse::<u64>() {
+        if speedup_factor > 0 { 
+            return Ok(base / speedup_factor) 
+        }
+    };
+    Err(())
 }
 
 struct CompiledRegex {
