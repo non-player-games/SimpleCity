@@ -1,17 +1,21 @@
 import xs, { MemoryStream, Stream } from "xstream";
 import concat from "xstream/extra/concat";
+import flattenConcurrently from 'xstream/extra/flattenConcurrently'
 import { VNode, DOMSource } from "@cycle/dom";
+import { TimeSource } from "@cycle/time";
 import { StateSource } from "cycle-onionify";
 
 import { BaseSources, BaseSinks } from "../interfaces";
 import { Input as PixiInput } from "../drivers/pixi"
+import { Sink as IPCSink } from "../drivers/ipc"
 import { ZoneType } from "../models/Zone";
 
 // Types
 export interface Sources extends BaseSources {
     onion: StateSource<State>;
     pixi: any; // TODO define the source from driver
-    ipc: any;
+    ipc: IPCSink;
+    time: TimeSource;
 }
 export interface Sinks extends BaseSinks {
     onion?: Stream<Reducer>;
@@ -22,31 +26,45 @@ interface Action {
     type: string;
     payload?: string;
 }
-interface Intent {
-    actions: Stream<Reducer>,
-    requests: Stream<Action>
-}
 
 // State
 enum GameState {
     STOP,
     START
 }
+interface RCINeed {
+    residential: number;
+    commercial: number;
+    industrial: number;
+}
 export interface State {
     activeBuild: ZoneType;
     grid: number[][];
-    gameState: GameState
+    peopleLocations: number[][];
+    money: number;
+    time: number;
+    gameState: GameState;
+    RCINeed: RCINeed;
 }
 export const defaultState: State = {
     activeBuild: ZoneType.NONE,
     grid: [],
-    gameState: GameState.STOP
+    peopleLocations: [],
+    money: 0,
+    time: 0,
+    gameState: GameState.STOP,
+    RCINeed: {
+        residential: 0,
+        commercial: 0,
+        industrial: 0
+    }
 };
 export type Reducer = (prev: State) => State | undefined;
 
-export function Home({ DOM, onion, pixi, ipc }: Sources): Sinks {
-    const intent: Intent = intentFn(DOM, pixi, ipc);
+export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
+    const intent$: Stream<Reducer> = intentFn(DOM, pixi, ipc, onion.state$);
     const vdom$: Stream<VNode> = view(onion.state$);
+    const request$: Stream<Action> = request(DOM, ipc, onion.state$, time);
 
     const gridDom$: MemoryStream<PixiInput> = DOM.select("#grid").element().take(1);
     const init$ = ipc.events
@@ -57,18 +75,48 @@ export function Home({ DOM, onion, pixi, ipc }: Sources): Sinks {
     const grid$ = onion.state$.map(state => state.grid);
     // debug usage
     ipc.events.subscribe({
-        next: console.log
+        next: console.log,
+        error: console.error,
+        complete: console.log
     });
 
     return {
         DOM: vdom$,
-        onion: intent.actions,
+        onion: intent$,
         pixi: concat(gridDom$, init$, grid$),
-        ipc: intent.requests
+        ipc: request$
     };
 }
 
-function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
+function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: TimeSource): Stream<Action> {
+    const startEvent$: Stream<Action> = xs.combine(
+        DOM.select(".start-button").events("click"),
+        state$
+    ).map(([_, state]): Action => {
+        return {
+            type: (state.gameState === GameState.START) ? "quitGame" : "startGame"
+        };
+    });
+    const startGameFollowedUp$: Stream<Action> = ipc.events
+        .filter((action: any): boolean => action.type === "startGame")
+        .mapTo<Stream<Action>>(getState())
+        .compose(flattenConcurrently);
+    const tick$: Stream<Action> = time.periodic(1000)
+        .mapTo<Stream<Action>>(getState())
+        .compose(flattenConcurrently);
+    return xs.merge(startEvent$, startGameFollowedUp$, tick$);
+
+    function getState(): Stream<Action> {
+        return xs.from([
+            {type: "getTime"},
+            {type: "getMoney"},
+            {type: "getPeopleLocation"},
+            {type: "getRCINeed"}
+        ]);
+    }
+}
+
+function intentFn(DOM: DOMSource, pixi: any, ipc: any, state$: Stream<State>): Stream<Reducer> {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
     );
@@ -84,21 +132,6 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
                 };
             };
         });
-    const startEvent$: Stream<Action> = DOM.select(".start-button")
-        .events("click")
-        .mapTo<Action>({type: "startGame"});
-    const startEvent2$: Stream<Action> = DOM.select(".start-button")
-        .events("click")
-        .mapTo<Action>({type: "getZoneGrid"});
-
-    const startEventReducer$: Stream<Reducer> = DOM.select(".start-button")
-        .events("click")
-        .mapTo<Reducer>((state) => {
-            return {
-                ...state,
-                gameState: GameState.START
-            };
-        });
 
     const systemEvents$: Stream<Reducer> = ipc.events
         .map((action: any): Reducer => {
@@ -108,11 +141,36 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
                     return state;
                 }
                 switch (action.type) {
+                    case "startGame":
+                        return {
+                            ...state,
+                            gameState: GameState.START
+                        };
                     case "getZoneGrid":
-                    return {
-                        ...state,
-                        grid: action.payload
-                    };
+                        return {
+                            ...state,
+                            grid: action.payload
+                        };
+                    case "getTime":
+                        return {
+                            ...state,
+                            time: action.payload
+                        };
+                    case "getMoney":
+                        return {
+                            ...state,
+                            money: action.payload
+                        };
+                    case "getPeopleLocation":
+                        return {
+                            ...state,
+                            peopleLocation: action.payload
+                        };
+                    case "getRCINeed":
+                        return {
+                            ...state,
+                            RCINeed: action.payload
+                        };
                     default:
                         return state;
                 }
@@ -128,10 +186,7 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any): Intent {
             }
         });
 
-    return {
-        actions: concat(init$, xs.merge(build$, changeActive$, startEventReducer$, systemEvents$)),
-        requests: xs.merge(startEvent$, startEvent2$)
-    };
+    return concat(init$, xs.merge(build$, changeActive$, systemEvents$));
 }
 
 function updateGrid(grid: number[][], i: number, j: number, buildType: ZoneType): number[][] {

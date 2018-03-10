@@ -69,6 +69,11 @@ function handler (action: string): (d: string) => Action {
                 type: action,
                 payload: buildGrid(reply.split(" ")[1])
             };
+        default:
+            return {
+                type: action,
+                payload: reply.split(" ")[1]
+            };
         }
     };
 }
