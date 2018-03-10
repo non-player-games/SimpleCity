@@ -5,25 +5,13 @@ use std::fmt;
 use std::mem;
 
 /// A 2-dimensional vector
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vector2 {
     pub x: usize,
     pub y: usize,
 }
 
-impl fmt::Debug for Vector2 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[x: {}, y: {}]", self.x, self.y)
-    }
-}
-
-/* @Copypaste
-fn v2(x: usize, y: usize) -> Vector2 {
-    Vector2 { x: x, y: y }
-}
-*/
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SimulationManager {
     pub population_grid: PopulationGrid,
     pub zone_grid: ZoneGrid,
@@ -72,7 +60,7 @@ impl SimulationManager {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RCINeed {
     residential: i64,
     commercial: i64,
@@ -80,7 +68,7 @@ pub struct RCINeed {
 }
 
 /// Grid that keeps track of the population in all of the zones
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopulationGrid {
     zones: Vec<usize>,
     size: Vector2,
@@ -116,32 +104,9 @@ impl PopulationGrid {
     }
 }
 
-impl fmt::Debug for PopulationGrid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, e) in self.zones.iter().enumerate() {
-            if i > 0 && i % self.size.x == 0 {
-                let _ = write!(f, "\n");
-            }
-            let _ = write!(f, "{:?}", e);
-        }
-        Ok(())
-    }
-}
-
-/*
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Zone {
-    // @Refactor: Empty sounded like the right name for no land. But perhaps Open or Vacant are better.
-    Empty,
-    Residential,
-    Commercial,
-    Industrial,
-}
-*/
-
 
 /// Grid that keeps track of the population in all of the zones
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ZoneGrid {
     zones: Vec<Zone>,
     size: Vector2,
@@ -183,18 +148,6 @@ impl ZoneGrid {
     }
 
     
-}
-
-impl fmt::Debug for ZoneGrid {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, e) in self.zones.iter().enumerate() {
-            if i > 0 && i % self.size.x == 0 {
-                let _ = write!(f, "\n");
-            }
-            let _ = write!(f, "{:?} ", e);
-        }
-        Ok(())
-    }
 }
 
 
