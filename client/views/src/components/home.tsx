@@ -73,12 +73,6 @@ export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
         .take(1)
         .map((d: any) => d.payload);
     const grid$ = onion.state$.map(state => state.grid);
-    // debug usage
-    ipc.events.subscribe({
-        next: console.log,
-        error: console.error,
-        complete: console.log
-    });
 
     return {
         DOM: vdom$,
@@ -89,25 +83,28 @@ export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
 }
 
 function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: TimeSource): Stream<Action> {
-    const startEvent$: Stream<Action> = xs.combine(
-        DOM.select(".start-button").events("click"),
-        state$
-    ).map(([_, state]): Action => {
-        return {
-            type: (state.gameState === GameState.START) ? "quitGame" : "startGame"
-        };
-    });
+    const startEvent$: Stream<Action> = DOM.select(".start-button").events("click")
+        .mapTo<Stream<Action>>(state$.take(1).map((state: State) => {
+            return {
+                type: (state.gameState === GameState.START) ? "quitGame" : "startGame"
+            };
+        }))
+        .flatten();
     const startGameFollowedUp$: Stream<Action> = ipc.events
         .filter((action: any): boolean => action.type === "startGame")
         .mapTo<Stream<Action>>(getState())
         .compose(flattenConcurrently);
-    const tick$: Stream<Action> = time.periodic(1000)
+    const tick$: Stream<Action> = state$
+        .filter(state => state.gameState === GameState.START)
+        .mapTo<Stream<number>>(time.periodic(3000))
+        .compose(flattenConcurrently)
         .mapTo<Stream<Action>>(getState())
         .compose(flattenConcurrently);
     return xs.merge(startEvent$, startGameFollowedUp$, tick$);
 
     function getState(): Stream<Action> {
         return xs.from([
+            {type: "getZoneGrid"},
             {type: "getTime"},
             {type: "getMoney"},
             {type: "getPeopleLocation"},
@@ -199,7 +196,8 @@ function view(state$: Stream<State>): Stream<VNode> {
     return state$.map(state => (
         <div className="fill-parent">
             <div className="info floating-panel">
-            $: 100
+                <div>time: {state.time}</div>
+                <div>$: {state.money}</div>
             </div>
             <div id="grid" className="fill-paent"></div>
             <div className="actions floating-panel">

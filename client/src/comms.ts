@@ -24,18 +24,19 @@ export function createSource (): Consumer {
 export function start (input: Consumer): Producer {
     const output = Observable.create(observer => {
         const process = spawn(systemFile, []);
-        process.stdout.on("data", (data: Buffer) => {
-            const dataString = new Buffer(data).toString("ascii");
-            console.log(`process stdout:\n${dataString}`);
-            // TODO: process data string as `uuid methodName args`
-            const parts = dataString.split(" ");
-            const msgUUID = parts[0];
-            if (memory[msgUUID]) {
-                observer.next(handler(memory[msgUUID])(dataString));
-                delete memory[msgUUID];
-            } else {
-                console.error("receive unknown uuid method reply", dataString);
-            }
+        process.stdout.on("data", (dataBuffer: Buffer) => {
+            const data = new Buffer(dataBuffer).toString("ascii").split("\n");
+            data.forEach(line => {
+                // TODO: process data string as `uuid methodName args`
+                const parts = line.split(" ");
+                const msgUUID = parts[0];
+                if (memory[msgUUID]) {
+                    observer.next(handler(memory[msgUUID])(line));
+                    delete memory[msgUUID];
+                } else {
+                    console.error("receive unknown uuid method reply", line);
+                }
+            });
         });
         process.stderr.on("data", (data: Buffer) => {
             console.error(`process stderr:\n${data}`);
@@ -52,7 +53,6 @@ export function start (input: Consumer): Producer {
                 msg = msg + ` ${action.payload}`;
             }
             msg = msg + "\n";
-            console.log("communication got message", action, msg);
             memory[msgUUID] = action.type;
             process.stdin.write(msg);
         });

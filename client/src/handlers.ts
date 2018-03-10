@@ -14,7 +14,6 @@ interface Input {
 export default function (input: Input) {
     input.systems.subscribe(sendMessageToAll(input.windowState));
     ipcMain.on("ipc-message", ( _: any, args: any ) => {
-        console.log("main process got message", args);
         input.events.next(args);
     });
 }
