@@ -3,8 +3,6 @@ extern crate serde_json;
 
 use rand;
 use rand::Rng;
-use rand::distributions::range::Range;
-use rand::distributions::Sample;
 use std::fmt;
 use std::mem;
 
@@ -178,27 +176,18 @@ impl ZoneGrid {
 fn increase_population(pop_grid: &mut PopulationGrid, zone_grid: &ZoneGrid) {
     let pop_count = pop_grid.population_count();
     let pop_increase = 2 + (pop_count as f64 * 0.05) as u64;
-    //let mut between = Range::new(0, pop_grid.zones.len() - 1);
     let mut rng = rand::thread_rng();
 
     // Only residential for now. 
     let residential = zone_grid.get_zone_residential();
-    //eprintln!("res: {:?}", residential);
-    for i in 0..pop_increase {
-        //let index = between.sample(&mut rng);
+    for _ in 0..pop_increase {
         let index = rng.choose(&residential);
-        /*
         if let Some(e) = index {
             // @Robust: use get_zone method
-            eprintln!("randomly picked index: {:?}", e);
             if let Some(z) = pop_grid.zones.get_mut(*e) {
-                z =  *z + 1;
-                eprintln!("z: {:?}", z);
+                *z += 1;
             }
         }
-        */
-        //println!("i: {:?}", index);
-        //*self.zones.get(index) += 1;
     }
 
 }

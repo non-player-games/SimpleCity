@@ -68,7 +68,6 @@ fn listen(){
 
         let grid_size = v2(16, 16);
         thread::spawn(move || {
-            let mut input = String::from("");
             loop {
                 let mut messages_rcvd: Vec<String> = Vec::with_capacity(0);
                 {
@@ -80,6 +79,7 @@ fn listen(){
                     let client_msg_opt = parse_client_message(&compiled_regex.command_regex, &message_rcvd);
                     // @Incomplete: we may want to move this elsewhere and make methods for each command perhaps.
                     // @Cleanup message format
+                    if client_msg_opt.is_none() { continue; }
                     let client_msg = client_msg_opt.unwrap();
                     let uuid = &client_msg.uuid;
                     let cmd = &client_msg.command;
@@ -165,7 +165,7 @@ fn listen(){
                             *game_paused_mutex.lock().unwrap() = false;
                         }
                         "isPaused"   => {
-                            let mut game_paused = false;
+                            let mut game_paused;
                             {
                                 game_paused = *game_paused_mutex.lock().unwrap();
                             }
@@ -198,7 +198,7 @@ fn listen(){
                 break;
             }
         }
-        let mut sleep_millis = 1000;
+        let sleep_millis: u64;
         {
             sleep_millis = *sleep_time_mutex.lock().unwrap();
         }
@@ -254,8 +254,10 @@ fn parse_client_message(re: &Regex, message: &String) -> Option<ClientMessage> {
     res
 }
 
-
-// Commands
+// ************************************************************
+// COMMANDS
+// ************************************************************
+//
 fn start_game(dimensions_v2: &Vector2) -> SimulationManager {
     SimulationManager::new(dimensions_v2)
 }
