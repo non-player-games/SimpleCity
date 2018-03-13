@@ -1,6 +1,10 @@
 extern crate serde;
 extern crate serde_json;
 
+use rand;
+use rand::Rng;
+use rand::distributions::range::Range;
+use rand::distributions::Sample;
 use std::fmt;
 use std::mem;
 
@@ -58,6 +62,14 @@ impl SimulationManager {
         }
         return false
     }
+
+    // this method should call all of the life cycle methods for all of the grids
+    pub fn update_lifecycles(&mut self) {
+        increase_population(&mut self.population_grid, &self.zone_grid);
+    }
+
+    
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,6 +114,8 @@ impl PopulationGrid {
     pub fn population_count(&self) -> usize {
         self.zones.iter().sum()
     }
+
+    
 }
 
 
@@ -147,9 +161,47 @@ impl ZoneGrid {
         return false
     }
 
+    // @Incomeplete: we can make this a more general type of function
+    // that accepts a zone type
+    pub fn get_zone_residential(&self) -> Vec<usize> {
+        let mut indexes = vec!();
+        for (i,z) in self.zones.iter().enumerate() {
+            if let &Zone::Residential = z {
+                indexes.push(i as usize);
+            }
+        }
+        indexes
+    }
     
 }
 
+fn increase_population(pop_grid: &mut PopulationGrid, zone_grid: &ZoneGrid) {
+    let pop_count = pop_grid.population_count();
+    let pop_increase = 2 + (pop_count as f64 * 0.05) as u64;
+    //let mut between = Range::new(0, pop_grid.zones.len() - 1);
+    let mut rng = rand::thread_rng();
+
+    // Only residential for now. 
+    let residential = zone_grid.get_zone_residential();
+    //eprintln!("res: {:?}", residential);
+    for i in 0..pop_increase {
+        //let index = between.sample(&mut rng);
+        let index = rng.choose(&residential);
+        /*
+        if let Some(e) = index {
+            // @Robust: use get_zone method
+            eprintln!("randomly picked index: {:?}", e);
+            if let Some(z) = pop_grid.zones.get_mut(*e) {
+                z =  *z + 1;
+                eprintln!("z: {:?}", z);
+            }
+        }
+        */
+        //println!("i: {:?}", index);
+        //*self.zones.get(index) += 1;
+    }
+
+}
 
 #[cfg(test)]
 mod tests {

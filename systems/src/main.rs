@@ -62,8 +62,8 @@ fn listen(){
     // pause it every second to simulate it doing processing
     // will terminate once it receives QUIT from stdin
     let mut game_paused = false;
-    let base_sleep_time: u64 = 1000;
-    let mut sleep_time: u64= base_sleep_time;
+    let base_sleep_time: u64 = 10;
+    let mut sleep_time: u64 = base_sleep_time * 100;
 
     let mut done = false;
     let grid_size = v2(16, 16);
@@ -172,9 +172,12 @@ fn listen(){
                 }
             }
         }
-        //}
+
+        // End of loop cleanup
+        // @Todo: separate thread so that we can sleep indepedently of comm thread
         if let Some(ref mut sim_manager) = sim_manager_opt {
             if !game_paused { 
+                sim_manager.update_lifecycles();
                 sim_manager.advance_time(); 
             }
         }
@@ -286,7 +289,7 @@ fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
 fn updated_sleep_time(speedup_factor_str: &String, base: u64) -> Result<u64, ()> {
     if let Ok(speedup_factor) = speedup_factor_str.parse::<u64>() {
         if speedup_factor > 0 { 
-            return Ok(base / speedup_factor) 
+            return Ok(base * speedup_factor) 
         }
     };
     Err(())
