@@ -26,10 +26,15 @@ export function start (input: Consumer): Producer {
         const process = spawn(systemFile, []);
         process.stdout.on("data", (dataBuffer: Buffer) => {
             const data = new Buffer(dataBuffer).toString("ascii").split("\n");
+            console.log("Got message", data);
             data.forEach(line => {
                 // TODO: process data string as `uuid methodName args`
                 const parts = line.split(" ");
                 const msgUUID = parts[0];
+                // skip empty lines
+                if (!line) {
+                    return;
+                }
                 if (memory[msgUUID]) {
                     observer.next(handler(memory[msgUUID])(line));
                     delete memory[msgUUID];

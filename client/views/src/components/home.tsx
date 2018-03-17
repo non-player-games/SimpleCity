@@ -1,4 +1,4 @@
-import xs, { MemoryStream, Stream } from "xstream";
+import xs, { Stream } from "xstream";
 import concat from "xstream/extra/concat";
 import flattenConcurrently from 'xstream/extra/flattenConcurrently'
 import { VNode, DOMSource } from "@cycle/dom";
@@ -6,14 +6,14 @@ import { TimeSource } from "@cycle/time";
 import { StateSource } from "cycle-onionify";
 
 import { BaseSources, BaseSinks } from "../interfaces";
-import { Input as PixiInput } from "../drivers/pixi"
+import { Input as PixiInput, Sink as PixiSink } from "../drivers/pixi"
 import { Sink as IPCSink } from "../drivers/ipc"
 import { ZoneType } from "../models/Zone";
 
 // Types
 export interface Sources extends BaseSources {
     onion: StateSource<State>;
-    pixi: any; // TODO define the source from driver
+    pixi: PixiSink;
     ipc: IPCSink;
     time: TimeSource;
 }
@@ -62,11 +62,11 @@ export const defaultState: State = {
 export type Reducer = (prev: State) => State | undefined;
 
 export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
-    const intent$: Stream<Reducer> = intentFn(DOM, pixi, ipc, onion.state$);
+    const intent$: Stream<Reducer> = intentFn(DOM, ipc, onion.state$);
     const vdom$: Stream<VNode> = view(onion.state$);
-    const request$: Stream<Action> = request(DOM, ipc, onion.state$, time);
+    const request$: Stream<Action> = request(DOM, ipc, onion.state$, time, pixi);
 
-    const gridDom$: MemoryStream<PixiInput> = DOM.select("#grid").element().take(1);
+    const gridDom$: Stream<PixiInput> = DOM.select("#grid").element().take(1);
     const init$ = ipc.events
         .filter((data: any) => !!data)
         .filter((data: any) => data.type === "getZoneGrid")
@@ -82,7 +82,7 @@ export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
     };
 }
 
-function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: TimeSource): Stream<Action> {
+function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: TimeSource, pixi: PixiSink): Stream<Action> {
     const startEvent$: Stream<Action> = DOM.select(".start-button").events("click")
         .mapTo<Stream<Action>>(state$.take(1).map((state: State) => {
             return {
@@ -90,17 +90,27 @@ function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: Time
             };
         }))
         .flatten();
-    const startGameFollowedUp$: Stream<Action> = ipc.events
-        .filter((action: any): boolean => action.type === "startGame")
-        .mapTo<Stream<Action>>(getState())
-        .compose(flattenConcurrently);
     const tick$: Stream<Action> = state$
         .filter(state => state.gameState === GameState.START)
+        .take(1) // seeems off :thinking_face:
         .mapTo<Stream<number>>(time.periodic(3000))
         .compose(flattenConcurrently)
         .mapTo<Stream<Action>>(getState())
         .compose(flattenConcurrently);
-    return xs.merge(startEvent$, startGameFollowedUp$, tick$);
+    const click$: Stream<Action> = pixi.events
+        .map((data: any) => {
+            return state$
+                .take(1)
+                .map<Action>((state: State): Action => {
+                    return {
+                        type: "setZoneGrid",
+                        payload: `${data.j} ${data.i} ${state.activeBuild}`
+                    };
+                })
+        })
+        .compose(flattenConcurrently);
+
+    return xs.merge(startEvent$, tick$, click$);
 
     function getState(): Stream<Action> {
         return xs.from([
@@ -113,7 +123,7 @@ function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: Time
     }
 }
 
-function intentFn(DOM: DOMSource, pixi: any, ipc: any, state$: Stream<State>): Stream<Reducer> {
+function intentFn(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>): Stream<Reducer> {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
     );
@@ -132,7 +142,6 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any, state$: Stream<State>): S
 
     const systemEvents$: Stream<Reducer> = ipc.events
         .map((action: any): Reducer => {
-            console.log("got event in views", action);
             return (state) => {
                 if (!action) {
                     return state;
@@ -173,17 +182,8 @@ function intentFn(DOM: DOMSource, pixi: any, ipc: any, state$: Stream<State>): S
                 }
             }
         });
-    const build$: Stream<Reducer> = pixi.events
-        .map((data:any): Reducer => {
-            return (state) => {
-                return {
-                    ...state,
-                    grid: updateGrid(state.grid, data.i, data.j, state.activeBuild)
-                };
-            }
-        });
 
-    return concat(init$, xs.merge(build$, changeActive$, systemEvents$));
+    return concat(init$, xs.merge(changeActive$, systemEvents$));
 }
 
 function updateGrid(grid: number[][], i: number, j: number, buildType: ZoneType): number[][] {

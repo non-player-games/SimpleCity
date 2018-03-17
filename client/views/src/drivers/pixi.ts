@@ -63,12 +63,17 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
                 rectGrid[i][j].on("pointerdown", () => {
                     producer.emit(clickEventName, {i, j});
                 });
+                rectGrid[i][j].zoneType = grid[i][j];
                 drawRect(i, j, grid[i][j]);
             }
         }
     }
 
     function drawRect(i: number, j: number, t: number): void {
+        // avoid redraw when the zone grid hasn't changed
+        if (rectGrid[i][j] === t) {
+            return;
+        }
         const color = zoneColors[t];
         const rectangle = rectGrid[i][j];
         // clear out the old style before redraw
@@ -96,7 +101,7 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
         });
     }
 
-    return function pixiDriver(sink$: MemoryStream<Input>): Sink {
+    return function pixiDriver(sink$: Stream<Input>): Sink {
         // first input as dom element
         sink$.take(1).addListener({ next: init });
         // second input as the initial grid
