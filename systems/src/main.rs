@@ -11,7 +11,7 @@ use std::{thread, time};
 
 
 fn main() {
-    println!("Starting systems ...");
+    eprintln!("Starting systems ...");
     listen();
 }
 
@@ -30,145 +30,182 @@ fn write_message(message: &[u8]) {
 
     if !(wrote_msg && wrote_newline && flushed_buffer){
         // @Todo send this to a logger
-        println!("Error while writing message");
+        eprintln!("Error while writing message");
     }
 }
 
 fn listen(){
-    let data: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
+    let done_mutex: Arc<Mutex<bool>>                             = Arc::new(Mutex::new(false));
+    let game_paused_mutex: Arc<Mutex<bool>>                      = Arc::new(Mutex::new(false));
+    let sleep_time_mutex: Arc<Mutex<u64>>                        = Arc::new(Mutex::new(1000));
+    let sim_manager_mutex: Arc<Mutex<Option<SimulationManager>>> = Arc::new(Mutex::new(None));
+    let data: Arc<Mutex<VecDeque<String>>>                       = Arc::new(Mutex::new(VecDeque::new()));
+    let compiled_regex = CompiledRegex::init();
+
     {
-        let d = data.clone();
         // This thread is dedicated to reading from stdin because stdin blocks
+        let d = data.clone();
         thread::spawn(move || {
             let mut input = String::from("");
             loop {
-                match io::stdin().read_line(&mut input) {
-                    Ok(_) => {
-                        input = input.trim().to_string();
-                        let mut dd = d.lock().unwrap();
-                        //*dd = input.clone();
-                        dd.push_back(input.clone());
-                        input.clear();
-                        // @Robustness when we terminate the function, how does this thread get cleaned
-                        // up?!?!
+                if io::stdin().read_line(&mut input).is_ok() {
+                    input = input.trim().to_string();
+                    let mut dd = d.lock().unwrap();
+                    dd.push_back(input.clone());
+                    input.clear();
+                }
+            }
+        });
+    }
+
+
+
+    {
+        let sim_manager_mutex   = sim_manager_mutex.clone();
+        let done_mutex          = done_mutex.clone();
+        let game_paused_mutex   = game_paused_mutex.clone();
+        let sleep_time_mutex    = sleep_time_mutex.clone();
+
+        let grid_size = v2(16, 16);
+        thread::spawn(move || {
+            loop {
+                let mut messages_rcvd: Vec<String> = Vec::with_capacity(0);
+                {
+                    if let Ok(mut messages_queue) = data.lock() {
+                        messages_rcvd = messages_queue.drain(..).collect();
                     }
-                    Err(error) => println!("error: {}", error),
+                }
+                for message_rcvd in messages_rcvd {
+                    let client_msg_opt = parse_client_message(&compiled_regex.command_regex, &message_rcvd);
+                    // @Incomplete: we may want to move this elsewhere and make methods for each command perhaps.
+                    // @Cleanup message format
+                    if client_msg_opt.is_none() { continue; }
+                    let client_msg = client_msg_opt.unwrap();
+                    let uuid = &client_msg.uuid;
+                    let cmd = &client_msg.command;
+
+                    let mut sim_manager_opt = sim_manager_mutex.lock().unwrap();
+
+                    // we need to check whether no commands matched despite there being a game in progress
+                    let mut matched_cmd_during_active_game = true && sim_manager_opt.is_some();
+                    if sim_manager_opt.is_some() {
+                        let ref mut sim_manager = sim_manager_opt.as_mut().unwrap();
+                        match cmd.as_str() {
+                            "getZoneGrid" => {
+                                let res = get_zone_grid(&sim_manager.zone_grid);
+                                send_client_message(uuid, &res);
+                            }, 
+                            "getMoney" => {
+                                let money = get_money(sim_manager.player_money);
+                                send_client_message(uuid, &money);
+                            },
+                            "getPeopleLocation" => {
+                                let m = get_people_location(&sim_manager.population_grid);
+                                send_client_message(uuid, &m);
+                            },
+                            "getTime" => {
+                                let time = get_time(sim_manager.time);
+                                send_client_message(uuid, &time);
+                            },
+                            "getRCINeed" => {
+                                let rci_need = get_rci_need(&sim_manager.rci_need);
+                                send_client_message(uuid, &rci_need);
+                            },
+                            "setZoneGrid" => {
+                                if client_msg.arguments.is_some() {
+                                    set_zone(&compiled_regex.set_zone_regex, &client_msg.arguments.unwrap(), &mut sim_manager.zone_grid);
+                                } else {
+                                    let m = format!("ERR no arguments");
+                                    send_client_message(uuid, &m);
+                                }
+                            },
+                            "setSpeed" => {
+                                if let Some(ref speed_factor) = client_msg.arguments {
+                                    if let Ok(new_sleep_time) = updated_sleep_time(speed_factor) {
+                                        let mut sleep_time = sleep_time_mutex.lock().unwrap();
+                                        *sleep_time = new_sleep_time;
+                                    }
+                                }
+                            }
+                            _ => {
+                                matched_cmd_during_active_game = false;
+                            }
+                        }
+                    }
+                    match cmd.as_str() {
+                        "quitGame" => { 
+                            if sim_manager_opt.is_some() {
+                                send_client_message(uuid, &"OK quitting game".to_string());
+                            } else {
+                                send_client_message(uuid, &"ERR there is no game to quit".to_string());
+                            }
+                            sim_manager_opt.take();
+                            //sim_manager_opt = None;
+                            continue;
+                        },
+                        "startGame" => { 
+                            if sim_manager_opt.is_some() {
+                                send_client_message(uuid, &"ERR game already in progress; quitGame first".to_string());
+                            } else {
+                                *sim_manager_opt = Some(start_game(&grid_size));
+                                send_client_message(uuid, &"OK starting game".to_string());
+                            }
+                        },
+                        "shutdown" => {
+                            send_client_message(uuid, &"OK shutting down simulation systems process".to_string());
+                            let mut done = done_mutex.lock().unwrap();
+                            *done = true;
+                            continue;
+                        },
+                        "gameExists" => send_client_message(uuid, &format!("{}", sim_manager_opt.is_some())),
+                        "pause" => {
+                            *game_paused_mutex.lock().unwrap() = true;
+                        },
+                        "unpause" => {
+                            *game_paused_mutex.lock().unwrap() = false;
+                        }
+                        "isPaused"   => {
+                            let mut game_paused;
+                            {
+                                game_paused = *game_paused_mutex.lock().unwrap();
+                            }
+                            send_client_message(uuid, &format!("{}", game_paused.to_string()));
+                        },
+                        _ => {
+                            if !matched_cmd_during_active_game {
+                                send_client_message(uuid, &format!("ERR Unknown command or no game in progress!"));
+                            }
+                        }
+                    }
                 }
             }
         });
     }
     
-    // @Incomplete this is the skeleton of what the systems side game/simulation loop
-    // pause it every second to simulate it doing processing
-    // will terminate once it receives QUIT from stdin
-    let sec = time::Duration::from_millis(1000);
-    let mut done = false;
-    let grid_size = v2(16, 16);
-    let mut sim_manager_opt: Option<SimulationManager> = None;
-    let compiled_regex = CompiledRegex::init();
-    //let command_regex: Regex = Regex::new(r"^([0-9a-f-]{36})\s+([a-zA-Z]+)(\s+(.+))?$").unwrap();
-    while !done {
-        // READ COMMANDS
-        //{
-        let mut messages_rcvd: Vec<String> = Vec::with_capacity(0);
+    loop {
         {
-            if let Ok(mut messages_queue) = data.lock() {
-                messages_rcvd = messages_queue.drain(..).collect();
-            }
-        }
-        for message_rcvd in messages_rcvd {
-            let client_msg_opt = parse_client_message(&compiled_regex.command_regex, &message_rcvd);
-            if client_msg_opt.is_none(){
-                continue;
-            }
-            // @Incomplete: we may want to move this elsewhere and make methods for
-            // each command perhaps.
-            // @Cleanup message format
-            let client_msg = client_msg_opt.unwrap();
-            let uuid = &client_msg.uuid;
-            let cmd = &client_msg.command;
-            // we need to check whether no commands matched despite there being a game in progress
-            let mut matched_cmd_during_active_game = true && sim_manager_opt.is_some();
-            if  cmd.len() > 0 {
-                if let Some(ref mut sim_manager) = sim_manager_opt {
-                    match cmd.as_str() {
-                        "getZoneGrid" => {
-                            let res = get_zone_grid(&sim_manager.zone_grid);
-                            send_client_message(uuid, &res);
-                        }, 
-                        "getMoney" => {
-                            let money = get_money(sim_manager.player_money);
-                            send_client_message(uuid, &money);
-                        },
-                        "getPeopleLocation" => {
-                            let m = get_people_location(&sim_manager.population_grid);
-                            send_client_message(uuid, &m);
-                        },
-                        "getTime" => {
-                            let time = get_time(sim_manager.time);
-                            send_client_message(uuid, &time);
-                        },
-                        "getRCINeed" => {
-                            let rci_need = get_rci_need(&sim_manager.rci_need);
-                            send_client_message(uuid, &rci_need);
-                        },
-                        "setZoneGrid" => {
-                            if client_msg.arguments.is_some() {
-                                set_zone(&compiled_regex.set_zone_regex, &client_msg.arguments.unwrap(), &mut sim_manager.zone_grid);
-                            } else {
-                                let m = format!("ERR no arguments");
-                                send_client_message(uuid, &m);
-                            }
-                            //let m = format!("OK set");
-                            //send_client_message(uuid, &m);
-                        },
-                        _ => {
-                            matched_cmd_during_active_game = false;
-                        }
-                    }
-                }
-                match cmd.as_str() {
-                    "quitGame" => { 
-                        if sim_manager_opt.is_some() {
-                            send_client_message(uuid, &"OK quitting game".to_string());
-                        } else {
-                            send_client_message(uuid, &"ERR there is no game to quit".to_string());
-                        }
-                        sim_manager_opt = None;
-                        continue;
-                    },
-                    "startGame" => { 
-                        match sim_manager_opt {
-                            Some(_) => send_client_message(uuid, &"ERR game already in progress; quitGame first".to_string()),
-                            None => {
-                                sim_manager_opt = Some(start_game(&grid_size));
-                                send_client_message(uuid, &"OK starting game".to_string());
-                            },
-                        }
-                    },
-                    "shutdown" => {
-                        send_client_message(uuid, &"OK shutting down simulation systems process".to_string());
-                        done = true;
-                        continue;
-                    },
-                    "gameExists" => {
-                        send_client_message(uuid, &format!("{}", sim_manager_opt.is_some()));
-                    },
-                    _ => {
-                        if !matched_cmd_during_active_game {
-                            send_client_message(uuid, &format!("ERR Unknown command or no game in progress!"));
-                        }
-                    }
+            let mut sim_manager = sim_manager_mutex.lock().unwrap();
+            if let Some(ref mut sim_manager) = *sim_manager {
+                let mut game_paused = game_paused_mutex.lock().unwrap();
+                if !*game_paused { 
+                    sim_manager.update_lifecycles();
+                    sim_manager.advance_time(); 
                 }
             }
+
+            let done = done_mutex.lock().unwrap();
+            if *done {
+                break;
+            }
         }
-        //}
-        if let Some(ref mut sim_manager) = sim_manager_opt {
-            sim_manager.advance_time(); 
+        let sleep_millis: u64;
+        {
+            sleep_millis = *sleep_time_mutex.lock().unwrap();
         }
-        thread::sleep(sec); 
+        thread::sleep(time::Duration::from_millis(sleep_millis)); 
     }
 }
+
 
 #[derive(Debug)]
 struct ClientMessage {
@@ -217,8 +254,10 @@ fn parse_client_message(re: &Regex, message: &String) -> Option<ClientMessage> {
     res
 }
 
-
-// Commands
+// ************************************************************
+// COMMANDS
+// ************************************************************
+//
 fn start_game(dimensions_v2: &Vector2) -> SimulationManager {
     SimulationManager::new(dimensions_v2)
 }
@@ -269,6 +308,24 @@ fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
         }
 
     }
+}
+
+// The speed factor is an integer reprsenting what % to run the simulation at
+// E.g.
+// 25   -> 4000 : this means run at  25% speed, i.e. sleep 4000 ms
+// 50   -> 2000 : this means run at  50% speed, i.e. sleep 2000 ms
+// 100  -> 1000 : this means run at 100% speed, i.e. sleep 1000 ms
+// 200  -> 500  : this means run at 200% speed, i.e. sleep 4000 ms
+fn updated_sleep_time(speed_factor_str: &String) -> Result<u64, ()> {
+    let base: f64 = 100.0;
+    let second_in_millis: f64 = 1000.0;
+    if let Ok(speed_factor) = speed_factor_str.parse::<u64>() {
+        if speed_factor > 0 { 
+            let scale = speed_factor as f64 / base;
+            return Ok((second_in_millis / scale) as u64);
+        }
+    };
+    Err(())
 }
 
 struct CompiledRegex {
