@@ -4,7 +4,7 @@ import { spawn } from "child_process";
 import * as uuid from "uuid/v4";
 
 // internal memory to track which uuid for which method call
-const memory = {};
+const memory = new Map();
 
 // TODO: change string type to be consise type
 export interface Action {
@@ -27,7 +27,7 @@ export function createSource (): Consumer {
 export function cleanup (): void {
     if (state.process) {
         console.log("shutting down systems");
-        // DIE
+        // DIE POTATO, DIE
         state.process.kill();
     }
 }
@@ -46,9 +46,9 @@ export function start (input: Consumer): Producer {
                 if (!line) {
                     return;
                 }
-                if (memory[msgUUID]) {
-                    observer.next(handler(memory[msgUUID])(line));
-                    delete memory[msgUUID];
+                if (memory.has(msgUUID)) {
+                    observer.next(handler(memory.get(msgUUID))(line));
+                    memory.delete(msgUUID);
                 } else {
                     console.error("receive unknown uuid method reply", line);
                 }
@@ -68,7 +68,7 @@ export function start (input: Consumer): Producer {
                 msg = msg + ` ${action.payload}`;
             }
             msg = msg + "\n";
-            memory[msgUUID] = action.type;
+            memory.set(msgUUID, action.type);
             state.process.stdin.write(msg);
         });
 
