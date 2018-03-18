@@ -25,7 +25,7 @@ export function makeIPCDriver(): (m: Stream<Input>) => Sink {
         });
         sink$.subscribe({
             next: (data: any): void => {
-            	console.log("got data", data);
+                console.log("got data", data);
                 ipcRenderer.send("ipc-message", data);
             },
             error: (err: any): void => {

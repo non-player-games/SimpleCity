@@ -76,10 +76,18 @@ function handler (action: string): (d: string) => Action {
         default:
             return {
                 type: action,
-                payload: reply.split(" ")[1]
+                payload: parseJSONSafe(reply.split(" ")[1], reply.split(" ")[1])
             };
         }
     };
+}
+
+function parseJSONSafe(jsonStr, defaultVal) {
+    try {
+        return JSON.parse(jsonStr);
+    } catch (e) {
+        return defaultVal;
+    }
 }
 
 function buildGrid(rawData: string): number[][] {
