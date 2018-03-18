@@ -37,7 +37,6 @@ export function start (input: Consumer): Producer {
         state.process = spawn(systemFile, []);
         state.process.stdout.on("data", (dataBuffer: Buffer) => {
             const data = new Buffer(dataBuffer).toString("ascii").split("\n");
-            console.log("Got message", data);
             data.forEach(line => {
                 // TODO: process data string as `uuid methodName args`
                 const parts = line.split(" ");
@@ -48,6 +47,7 @@ export function start (input: Consumer): Producer {
                 }
                 if (memory.has(msgUUID)) {
                     observer.next(handler(memory.get(msgUUID))(line));
+                    console.log("Got message", memory.get(msgUUID), line);
                     memory.delete(msgUUID);
                 } else {
                     console.error("receive unknown uuid method reply", line);

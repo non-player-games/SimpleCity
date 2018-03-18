@@ -66,10 +66,13 @@ export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
     const vdom$: Stream<VNode> = view(onion.state$);
     const request$: Stream<Action> = request(DOM, ipc, onion.state$, time, pixi);
 
-    const gridDom$: Stream<PixiInput> = DOM.select("#grid").element().take(1);
+    const gridDom$: Stream<PixiInput> = DOM
+        .select("#grid")
+        .element()
+        .take(1);
     const init$ = ipc.events
-        .filter((data: any) => !!data)
-        .filter((data: any) => data.type === "getZoneGrid")
+        .filter((data: any) => !!data) // avoid any empty data
+        .filter(getAction("getZoneGrid"))
         .take(1)
         .map((d: any) => d.payload);
     const grid$ = onion.state$.map(state => state.grid);
@@ -83,13 +86,14 @@ export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
 }
 
 function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: TimeSource, pixi: PixiSink): Stream<Action> {
-    const startEvent$: Stream<Action> = DOM.select(".start-button").events("click")
-        .mapTo<Stream<Action>>(state$.take(1).map((state: State) => {
-            return {
-                type: (state.gameState === GameState.START) ? "quitGame" : "startGame"
-            };
-        }))
+    const startEvent$: Stream<Action> = DOM.select(".start-button")
+        .events("click")
+        .mapTo<Stream<Action>>(state$.take(1).map(startOrQuit))
         .flatten();
+    const followedUpStartEvent$: Stream<Action> = DOM.select(".start-button")
+        .events("click")
+        .mapTo<Stream<Action>>(getState())
+        .compose(flattenConcurrently);
     const tick$: Stream<Action> = state$
         .filter(state => state.gameState === GameState.START)
         .take(1) // seeems off :thinking_face:
@@ -99,18 +103,34 @@ function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: Time
         .compose(flattenConcurrently);
     const click$: Stream<Action> = pixi.events
         .map((data: any) => {
-            return state$
-                .take(1)
-                .map<Action>((state: State): Action => {
-                    return {
-                        type: "setZoneGrid",
-                        payload: `${data.j} ${data.i} ${state.activeBuild}`
-                    };
-                })
+            return concat(
+                state$
+                    .take(1)
+                    .map<Action>((state: State): Action => {
+                        return {
+                            type: "setZoneGrid",
+                            payload: `${data.j} ${data.i} ${state.activeBuild}`
+                        };
+                    }),
+                // TODO: temporarily work around on getting zone grid right away
+                xs.from([{type: "getZoneGrid"}])
+            );
         })
         .compose(flattenConcurrently);
+    // TODO: currently not getting response on setting zonegrid
+    const reactToSetZoneGrid$: Stream<Action> = pixi.events
+        .filter((data: any) => !!data) // avoid any empty data
+        .filter(getAction("setZoneGrid"))
+        // TODO: might need to handle error case
+        .mapTo<Action>({ type: "getZoneGrid" });
 
-    return xs.merge(startEvent$, tick$, click$);
+    return xs.merge(
+        startEvent$,
+        followedUpStartEvent$,
+        tick$,
+        click$,
+        reactToSetZoneGrid$
+    );
 
     function getState(): Stream<Action> {
         return xs.from([
@@ -227,4 +247,15 @@ function getColorCircleClass(active: ZoneType, t: keyof typeof ZoneType): string
 }
 function deepCopy<T> (obj: T): T {
     return JSON.parse(JSON.stringify(obj));
+}
+// IDEA: maybe use Rambda to replace common helper function like below
+function startOrQuit(state: State): Action {
+    return {
+        type: (state.gameState === GameState.START) ? "quitGame" : "startGame"
+    };
+}
+function getAction (type: string): (a: Action) => boolean {
+    return function(action: Action): boolean {
+        return action.type === type;
+    }
 }
