@@ -198,6 +198,9 @@ function view(state$: Stream<State>): Stream<VNode> {
             <div className="info floating-panel">
                 <div>time: {state.time}</div>
                 <div>$: {state.money}</div>
+                <div>R: {state.RCINeed.residential}</div>
+                <div>C: {state.RCINeed.commercial}</div>
+                <div>I: {state.RCINeed.industrial}</div>
             </div>
             <div id="grid" className="fill-paent"></div>
             <div className="actions floating-panel">

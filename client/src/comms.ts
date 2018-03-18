@@ -45,7 +45,6 @@ export function start (input: Consumer): Producer {
         });
         process.stderr.on("data", (data: Buffer) => {
             console.error(`process stderr:\n${data}`);
-            observer.error(data);
         });
         process.on("close", (code) => {
             console.log("System process closed with code", code);
