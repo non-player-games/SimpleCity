@@ -13,7 +13,7 @@
     "prepackage": "npm run build",
     "package": "electron-packager . --all --overwrite --out bin",
     "prebuild-linux": "rm -rf build",
-    "build-linux": "./scripts/link-systems.sh linux && tsc && electron-rebuild",
+    "build-linux": "./scripts/link-systems.sh linux && tsc && ./scripts/build-views.sh && electron-rebuild",
     "prepackage-linux": "npm run build-linux",
     "package-linux": "electron-packager . --platform=linux --arch=x64 --overwrite --out bin",
     "prestart-linux": "npm install && npm run build-linux",
