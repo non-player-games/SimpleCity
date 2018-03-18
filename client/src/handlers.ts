@@ -12,10 +12,10 @@ interface Input {
  * set up ipc binding between the renderer to actual function
  */
 export default function (input: Input) {
-    input.systems.subscribe(sendMessageToAll(input.windowState));
     ipcMain.on("ipc-message", ( _: any, args: any ) => {
         input.events.next(args);
     });
+    input.systems.subscribe(sendMessageToAll(input.windowState));
 }
 
 /**

@@ -16,15 +16,26 @@ export type Consumer = Observable<Action>;
 
 // TODO: change the path to be configuration based
 const systemFile = path.join(__dirname, "../systems/systems");
+const state = {
+    process: null
+};
 
 export function createSource (): Consumer {
     return new Subject<Action>();
 }
 
+export function cleanup (): void {
+    if (state.process) {
+        console.log("shutting down systems");
+        // DIE
+        state.process.kill();
+    }
+}
+
 export function start (input: Consumer): Producer {
     const output = Observable.create(observer => {
-        const process = spawn(systemFile, []);
-        process.stdout.on("data", (dataBuffer: Buffer) => {
+        state.process = spawn(systemFile, []);
+        state.process.stdout.on("data", (dataBuffer: Buffer) => {
             const data = new Buffer(dataBuffer).toString("ascii").split("\n");
             console.log("Got message", data);
             data.forEach(line => {
@@ -43,10 +54,10 @@ export function start (input: Consumer): Producer {
                 }
             });
         });
-        process.stderr.on("data", (data: Buffer) => {
+        state.process.stderr.on("data", (data: Buffer) => {
             console.error(`process stderr:\n${data}`);
         });
-        process.on("close", (code) => {
+        state.process.on("close", (code) => {
             console.log("System process closed with code", code);
         });
 
@@ -58,8 +69,13 @@ export function start (input: Consumer): Producer {
             }
             msg = msg + "\n";
             memory[msgUUID] = action.type;
-            process.stdin.write(msg);
+            state.process.stdin.write(msg);
         });
+
+        // when observable is closed, clean up the process
+        return () => {
+            state.process.stdin.write(`${uuid()} shutdown`);
+        };
     });
     return output;
 }
