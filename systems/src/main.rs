@@ -4,7 +4,6 @@ extern crate serde_json;
 
 use regex::Regex;
 use systems::simulation::{PopulationGrid, RCINeed, SimulationManager, Vector2, ZoneGrid};
-use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::io::{self, Write};
 use std::{thread, time};
@@ -39,26 +38,7 @@ fn listen(){
     let game_paused_mutex: Arc<Mutex<bool>>                      = Arc::new(Mutex::new(false));
     let sleep_time_mutex: Arc<Mutex<u64>>                        = Arc::new(Mutex::new(1000));
     let sim_manager_mutex: Arc<Mutex<Option<SimulationManager>>> = Arc::new(Mutex::new(None));
-    let data: Arc<Mutex<VecDeque<String>>>                       = Arc::new(Mutex::new(VecDeque::new()));
     let compiled_regex = CompiledRegex::init();
-
-    {
-        // This thread is dedicated to reading from stdin because stdin blocks
-        let d = data.clone();
-        thread::spawn(move || {
-            let mut input = String::from("");
-            loop {
-                if io::stdin().read_line(&mut input).is_ok() {
-                    input = input.trim().to_string();
-                    let mut dd = d.lock().unwrap();
-                    dd.push_back(input.clone());
-                    input.clear();
-                }
-            }
-        });
-    }
-
-
 
     {
         let sim_manager_mutex   = sim_manager_mutex.clone();
@@ -67,15 +47,17 @@ fn listen(){
         let sleep_time_mutex    = sleep_time_mutex.clone();
 
         let grid_size = v2(16, 16);
+        let mut input = String::from("");
         thread::spawn(move || {
             loop {
-                let mut messages_rcvd: Vec<String> = Vec::with_capacity(0);
-                {
-                    if let Ok(mut messages_queue) = data.lock() {
-                        messages_rcvd = messages_queue.drain(..).collect();
-                    }
+                input.clear();
+                if io::stdin().read_line(&mut input).is_ok() {
+                    input = input.trim().to_string();
                 }
-                for message_rcvd in messages_rcvd {
+
+                //for message_rcvd in messages_rcvd 
+                if input.len() > 0 {
+                    let message_rcvd = input.clone();
                     let client_msg_opt = parse_client_message(&compiled_regex.command_regex, &message_rcvd);
                     // @Incomplete: we may want to move this elsewhere and make methods for each command perhaps.
                     // @Cleanup message format
@@ -132,6 +114,7 @@ fn listen(){
                             }
                         }
                     }
+
                     match cmd.as_str() {
                         "quitGame" => { 
                             if sim_manager_opt.is_some() {
