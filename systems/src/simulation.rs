@@ -77,6 +77,10 @@ pub struct RCINeed {
     industrial: i64,
 }
 
+
+// The maximum allowed population in a single residential zone
+static MAX_ZONE_POPULATION: usize = 50;
+
 /// Grid that keeps track of the population in all of the zones
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopulationGrid {
@@ -177,7 +181,6 @@ fn increase_population(pop_grid: &mut PopulationGrid, zone_grid: &ZoneGrid) {
     let pop_count = pop_grid.population_count();
     let pop_increase = 2 + (pop_count as f64 * 0.05) as u64;
     let mut rng = rand::thread_rng();
-
     // Only residential for now. 
     let residential = zone_grid.get_zone_residential();
     for _ in 0..pop_increase {
@@ -185,7 +188,9 @@ fn increase_population(pop_grid: &mut PopulationGrid, zone_grid: &ZoneGrid) {
         if let Some(e) = index {
             // @Robust: use get_zone method
             if let Some(z) = pop_grid.zones.get_mut(*e) {
-                *z += 1;
+                if *z < MAX_ZONE_POPULATION {
+                    *z += 1;
+                } 
             }
         }
     }
