@@ -46,19 +46,25 @@ impl SimulationManager {
         self.time += 1;
     }
 
-    pub fn buy_zone(&mut self, location: &Vector2, new_zone: &Zone) -> bool {
+    pub fn buy_zone(&mut self, location: &Vector2, new_zone: Zone) -> bool {
         let cost = match new_zone {
-            &Zone::Empty => 0,
-            &Zone::Residential => 2,
-            &Zone::Commercial => 2,
-            &Zone::Industrial => 2,
+            Zone::Empty => 0,
+            Zone::Residential => 2,
+            Zone::Commercial => 2,
+            Zone::Industrial => 2,
         };
 
         if cost <= self.player_money {
             self.player_money -= cost;
-            return self.zone_grid.set_zone(location, new_zone)
+            let mut can_set = false;
+            if let Some(z) = self.zone_grid.get_zone(location) {
+                can_set = *z != Zone::Empty && new_zone == Zone::Empty || *z == Zone::Empty;
+            }
+            if can_set {
+                return self.zone_grid.set_zone(location, &new_zone);
+            }
         }
-        return false
+        false
     }
 
     // this method should call all of the life cycle methods for all of the grids
@@ -66,8 +72,9 @@ impl SimulationManager {
         increase_population(&mut self.population_grid, &self.zone_grid);
     }
 
-    
-
+    pub fn money(&self) -> u64 {
+        self.player_money
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

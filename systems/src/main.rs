@@ -78,7 +78,7 @@ fn listen(){
                                 send_client_message(uuid, &res);
                             }, 
                             "getMoney" => {
-                                let money = get_money(sim_manager.player_money);
+                                let money = get_money(sim_manager);
                                 send_client_message(uuid, &money);
                             },
                             "getPeopleLocation" => {
@@ -95,7 +95,7 @@ fn listen(){
                             },
                             "setZoneGrid" => {
                                 if client_msg.arguments.is_some() {
-                                    set_zone(&compiled_regex.set_zone_regex, &client_msg.arguments.unwrap(), &mut sim_manager.zone_grid);
+                                    set_zone(&compiled_regex.set_zone_regex, &client_msg.arguments.unwrap(), sim_manager);
                                 } else {
                                     let m = format!("ERR no arguments");
                                     send_client_message(uuid, &m);
@@ -261,8 +261,8 @@ fn get_people_location(pop_grid: &PopulationGrid) -> String {
     }
 }
 
-fn get_money(money: u64) -> String {
-    money.to_string()
+fn get_money(simulation_manager: &SimulationManager) -> String {
+    simulation_manager.money().to_string()
 }
 
 fn get_time(time: u64) -> String {
@@ -277,7 +277,8 @@ fn get_rci_need(rci_need: &RCINeed) -> String {
 }
 
 
-fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
+//fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
+fn set_zone(re: &Regex, args: &String, simulation_mgr: &mut SimulationManager) {
     let caps_opt = re.captures(args);
     if let Some(caps) = caps_opt {
         if caps.len() == 4 {
@@ -286,7 +287,7 @@ fn set_zone(re: &Regex, args: &String, zone_grid: &mut ZoneGrid) {
             let zone_opt = caps.get(3).map(|c| serde_json::from_str(c.as_str()).unwrap_or(None)).unwrap_or(None);
             
             if let (Some(x), Some(y), Some(zone)) = (x_opt, y_opt, zone_opt) {
-                zone_grid.set_zone(&v2(x, y), &zone);
+                simulation_mgr.buy_zone(&v2(x, y), zone);
             }
         }
 
