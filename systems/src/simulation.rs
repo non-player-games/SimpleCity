@@ -55,13 +55,16 @@ impl SimulationManager {
         };
 
         if cost <= self.player_money {
-            self.player_money -= cost;
             let mut can_set = false;
             if let Some(z) = self.zone_grid.get_zone(location) {
                 can_set = *z != Zone::Empty && new_zone == Zone::Empty || *z == Zone::Empty;
             }
             if can_set {
-                return self.zone_grid.set_zone(location, &new_zone);
+                let was_zone_set = self.zone_grid.set_zone(location, &new_zone);
+                if was_zone_set {
+                    self.player_money -= cost;
+                }
+                return was_zone_set;
             }
         }
         false
