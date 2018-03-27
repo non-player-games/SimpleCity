@@ -6,10 +6,14 @@ import * as EventEmitter from "events";
 
 import { ZoneType } from "../models/Zone";
 
+export interface State {
+    zones: number[][];
+    population: number[][];
+}
 export interface Sink {
     events: Stream<Event>;
 }
-export type Input = string | Element | Document | HTMLBodyElement | number[][];
+export type Input = string | Element | Document | HTMLBodyElement | State;
 
 const width: number = 640;
 const height: number = 640;
@@ -33,6 +37,7 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
     let instance: PIXI.Application; // lazy initialize chart on first stream event
     let el: Element;
     const rectGrid: any[][] = [[]];
+    const populationGrid: any[][] = [[]];
     const producer = new EventProducer();
     const sink = {
         events: adapt(fromEvent(producer, clickEventName))
@@ -42,7 +47,7 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
         el = element;
     }
 
-    function createApplication(grid: number[][]): void {
+    function createApplication(state: State): void {
         instance = new PIXI.Application({
             width,
             height,
@@ -53,31 +58,34 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
             console.error("PixiDriver: Cannot find container element");
             return;
         }
-        // initial rendering
+        // initial rendering with proper objects
         instance.renderer.backgroundColor = backgroundColor;
-        for (let i = 0; i < grid.length; i++) {
+        for (let i = 0; i < state.zones.length; i++) {
             rectGrid[i] = [];
-            for (let j = 0; j < grid[i].length; j++) {
+            populationGrid[i] = [];
+            for (let j = 0; j < state.zones[i].length; j++) {
                 rectGrid[i][j] = new PIXI.Graphics();
+                populationGrid[i][j] = new PIXI.Text("0", { fontSize: 14, fill: 0xcccccc, align: 'center'});
+
                 instance.stage.addChild(rectGrid[i][j]);
+                instance.stage.addChild(populationGrid[i][j]);
                 rectGrid[i][j].on("pointerdown", () => {
                     producer.emit(clickEventName, {i, j});
                 });
-                rectGrid[i][j].zoneType = grid[i][j];
-                drawRect(i, j, grid[i][j]);
+                drawPopulationText(i, j, state.population[i][j]);
+                drawRect(i, j, state.zones[i][j]);
             }
         }
     }
 
     function drawRect(i: number, j: number, t: number): void {
         // avoid redraw when the zone grid hasn't changed
-        if (rectGrid[i][j] === t) {
+        if (rectGrid[i][j].zoneType === t) {
             return;
         }
         const color = zoneColors[t];
         const rectangle = rectGrid[i][j];
         // clear out the old style before redraw
-        // may need to check performance to see if the Pixi does lazy redraw
         rectangle.clear();
         rectangle.beginFill(color);
         if (color === zoneColors[ZoneType.NONE]) {
@@ -88,15 +96,32 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
         rectangle.y = i * (rectSize + rectPadding);
         rectangle.interactive = true;
         rectangle.buttonMode = true;
+        rectGrid[i][j].zoneType = t;
+    }
+    function drawPopulationText(i: number, j: number, p: number): void {
+        // avoid redraw if it hasn't changed
+        if (populationGrid[i][j] === p) {
+            return;
+        }
+        const text = populationGrid[i][j];
+        console.log("updating text", i, j, p);
+        text.text = `${p}`;
+        text.x = j * (rectSize + rectPadding) + rectPadding * 2;
+        text.y = i * (rectSize + rectPadding) + rectPadding * 2;
     }
 
-    function updateChart(data: number[][]): void {
+    function updateChart(data: State): void {
         if (!data) {
             return;
         }
-        data.forEach((row, i) => {
+        data.zones.forEach((row, i) => {
             row.forEach((t, j) => {
                 drawRect(i, j, t);
+            });
+        });
+        data.population.forEach((row, i) => {
+            row.forEach((t, j) => {
+                drawPopulationText(i, j, t);
             });
         });
     }

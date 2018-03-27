@@ -65,26 +65,50 @@ export function Home({ DOM, onion, pixi, ipc, time }: Sources): Sinks {
     const intent$: Stream<Reducer> = intentFn(DOM, ipc, onion.state$);
     const vdom$: Stream<VNode> = view(onion.state$);
     const request$: Stream<Action> = request(DOM, ipc, onion.state$, time, pixi);
-
-    const gridDom$: Stream<PixiInput> = DOM
-        .select("#grid")
-        .element()
-        .take(1);
-    const init$ = ipc.events
-        .filter((data: any) => !!data) // avoid any empty data
-        .filter(getAction("getZoneGrid"))
-        .take(1)
-        .map((d: any) => d.payload);
-    const grid$ = onion.state$.map(state => state.grid);
+    const pixiStream$: Stream<PixiInput> = grid(DOM, ipc, onion.state$);
 
     return {
         DOM: vdom$,
         onion: intent$,
-        pixi: concat(gridDom$, init$, grid$),
+        pixi: pixiStream$,
         ipc: request$
     };
 }
 
+function grid(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>): Stream<PixiInput> {
+    const gridDOM$: Stream<PixiInput> = DOM
+        .select("#grid")
+        .element()
+        .take(1);
+    const init$ = xs.combine(
+        ipc.events
+            .filter((data: any) => !!data) // avoid any empty data
+            .filter(getAction("getZoneGrid"))
+            .take(1)
+            .map((d: any) => d.payload),
+        ipc.events
+            .filter((data: any) => !!data)
+            .filter(getAction("getPeopleLocation"))
+            .take(1)
+            .map((d: any) => d.payload)
+    ).map((mergedData) => {
+        return {
+            zones: mergedData[0],
+            population: mergedData[1]
+        };
+    });
+    // merge both grid and population data to send
+    const gridState$ = state$.map(state => {
+        return {
+            zones: state.grid,
+            population: state.peopleLocations
+        };
+    });
+
+    return concat(gridDOM$, init$, gridState$);
+}
+
+// request creates observable to send data over ipc to systems
 function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: TimeSource, pixi: PixiSink): Stream<Action> {
     const startEvent$: Stream<Action> = DOM.select(".start-button")
         .events("click")
@@ -143,6 +167,7 @@ function request(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>, time: Time
     }
 }
 
+// intent create observable to the change of state on screen
 function intentFn(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>): Stream<Reducer> {
     const init$ = xs.of<Reducer>(
         prevState => (prevState === undefined ? defaultState : prevState)
@@ -162,6 +187,7 @@ function intentFn(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>): Stream<R
 
     const systemEvents$: Stream<Reducer> = ipc.events
         .map((action: any): Reducer => {
+            // TODO: change following to be utility function
             return (state) => {
                 if (!action) {
                     return state;
@@ -190,7 +216,7 @@ function intentFn(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>): Stream<R
                     case "getPeopleLocation":
                         return {
                             ...state,
-                            peopleLocation: action.payload
+                            peopleLocations: action.payload
                         };
                     case "getRCINeed":
                         return {

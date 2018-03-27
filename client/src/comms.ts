@@ -85,6 +85,7 @@ function handler (action: string): (d: string) => Action {
     return (reply: string): Action => {
         switch (action) {
         case "getZoneGrid":
+        case "getPeopleLocation":
             return {
                 type: action,
                 payload: buildGrid(reply.split(" ")[1])

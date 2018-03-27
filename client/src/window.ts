@@ -57,5 +57,5 @@ function createWindow (cleanUpCb) {
             state.mainWindow = null;
             cleanUpCb();
         });
-    }
+    };
 }
