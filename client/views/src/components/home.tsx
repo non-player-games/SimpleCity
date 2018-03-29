@@ -232,8 +232,8 @@ function intentFn(DOM: DOMSource, ipc: IPCSink, state$: Stream<State>): Stream<R
     return concat(init$, xs.merge(changeActive$, systemEvents$));
 }
 
-function updateGrid(grid: number[][], i: number, j: number, buildType: ZoneType): number[][] {
-    const copy = deepCopy(grid);
+function updateGrid(gridData: number[][], i: number, j: number, buildType: ZoneType): number[][] {
+    const copy = deepCopy(gridData);
     copy[i][j] = buildType;
     return copy;
 }
