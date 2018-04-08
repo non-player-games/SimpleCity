@@ -44,7 +44,8 @@ h1, h2, h3, h4, h5, h6 {
 /* app specific */
 .floating-panel {
     position: fixed;
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #eee;
     border-radius: 5px;
     z-index: 10;
 
@@ -72,6 +73,8 @@ button {
     padding: 0;
     margin: 1em;
     border: none;
+    color: inherit;
+    font-family: inherit;
 }
 button:hover {
     opacity: 0.8;
@@ -94,6 +97,9 @@ button:focus {
 }
 .color-circle.none {
     background-color: #222222;
+}
+.color-circle.road {
+    background-color: #999999;
 }
 .color-circle.residential {
     background-color: #00ff7f;

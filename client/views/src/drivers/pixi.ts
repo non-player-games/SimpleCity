@@ -25,6 +25,7 @@ const backgroundColor: number = 0x333333;
 const whiteColor: number = 0xeeeeee;
 const zoneColors: number[] = [
     0x222222,
+    0x999999,
     0x00ff7f,
     0x3399ff,
     0xffff66
