@@ -48,26 +48,39 @@ impl SimulationManager {
 
     pub fn buy_zone(&mut self, location: &Vector2, new_zone: Zone) -> bool {
         let cost = match new_zone {
-            Zone::Empty => 0,
+            Zone::Empty       => 0,
+            Zone::Road        => 1,
             Zone::Residential => 2,
-            Zone::Commercial => 2,
-            Zone::Industrial => 2,
+            Zone::Commercial  => 2,
+            Zone::Industrial  => 2,
         };
+        
+        if cost > self.player_money { return false; }
 
-        if cost <= self.player_money {
-            let mut can_set = false;
-            if let Some(z) = self.zone_grid.get_zone(location) {
-                can_set = *z != Zone::Empty && new_zone == Zone::Empty || *z == Zone::Empty;
-            }
-            if can_set {
-                let was_zone_set = self.zone_grid.set_zone(location, &new_zone);
-                if was_zone_set {
-                    self.player_money -= cost;
-                }
-                return was_zone_set;
-            }
+        /* Validation. We allow the change to go through in the following cases
+         * 1. The old zone differs than the new zone.
+         * 2. Any of the following
+         *   a. The new zone will be made EMPTY
+         *   b. The old zone is EMPTY and will be a road
+         *   c. The old zone is EMPTY  and the new zone is not a ROAD and there is at least 1 adjacent road
+        */
+        let mut can_set = false;
+        let adj_to_road = self.zone_grid.adjacent_to_road(location);
+        if let Some(old_zone) = self.zone_grid.get_zone(location) {
+            let zone_changing = *old_zone != new_zone;
+            let make_empty    = new_zone  == Zone::Empty;
+            let make_road     = *old_zone == Zone::Empty && new_zone == Zone::Road;
+            let make_rci      = *old_zone == Zone::Empty && new_zone != Zone::Road && adj_to_road;
+            can_set = zone_changing && make_empty || make_road || make_rci;
         }
-        false
+
+        if !can_set { return false; }
+
+        let was_zone_set = self.zone_grid.set_zone(location, &new_zone);
+        if was_zone_set {
+            self.player_money -= cost;
+        }
+        return was_zone_set;
     }
 
     // this method should call all of the life cycle methods for all of the grids
@@ -184,7 +197,50 @@ impl ZoneGrid {
         }
         indexes
     }
-    
+
+    pub fn adjacent_to_road(&self, pos: &Vector2) -> bool {
+        let width = self.size.x;
+        let height = self.size.y;
+        if pos.x >= width || pos.y >= height {
+            return false;
+        }
+
+        let index: usize = height * pos.y + pos.x;
+        if index >= self.zones.len() {
+            return false;
+        }
+
+        let above_index: isize = index as isize - width as isize;
+        let above: Option<Zone> = if above_index >= 0 {
+            Some(self.zones[above_index as usize].clone())
+        } else {
+            None
+        };
+
+        let below_index: usize = index + width;
+        let below: Option<Zone> = if below_index < self.zones.len() {
+            Some(self.zones[below_index].clone())
+        } else {
+            None
+        };
+        
+
+        let left: Option<Zone> = if index % width != 0 {
+            Some(self.zones[index - 1].clone())
+        } else {
+            None
+        };
+
+        let right: Option<Zone> = if index % width != width - 1 {
+            Some(self.zones[index + 1].clone())
+        } else {
+            None
+        };
+
+        let road: Option<Zone> = Some(Zone::Road);
+        above == road || below == road || left == road || right == road
+    }
+
 }
 
 fn increase_population(pop_grid: &mut PopulationGrid, zone_grid: &ZoneGrid) {
@@ -307,8 +363,9 @@ macro_rules! enum_number {
 }
 
 enum_number!(Zone {
-    Empty = 0,
-    Residential = 1,
-    Commercial = 2,
-    Industrial = 3,
+    Empty       = 0,
+    Road        = 1,
+    Residential = 2,
+    Commercial  = 3,
+    Industrial  = 4,
 });
