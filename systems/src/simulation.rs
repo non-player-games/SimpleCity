@@ -21,6 +21,7 @@ pub struct SimulationManager {
     pub time: u64,
     pub player_money: u64,
     pub rci_need: RCINeed,
+    pub tax_rate: f64,
 }
 
 impl SimulationManager {
@@ -31,6 +32,7 @@ impl SimulationManager {
         let size = dimensions_v2.clone();
         let time: u64 = 0;
         let player_money: u64 = 100;
+        let tax_rate: f64 = 0.09;
         let rci_need = RCINeed { residential: 0, commercial: 0, industrial: 0 };
         SimulationManager {
             population_grid,
@@ -39,11 +41,14 @@ impl SimulationManager {
             time,
             player_money,
             rci_need,
+            tax_rate,
         }
    }
 
-    pub fn advance_time(&mut self) {
+    pub fn next_tick(&mut self) {
         self.time += 1;
+        self.increase_population();
+        self.collect_tax();
     }
 
     pub fn buy_zone(&mut self, location: &Vector2, new_zone: Zone) -> bool {
@@ -83,14 +88,41 @@ impl SimulationManager {
         return was_zone_set;
     }
 
-    // this method should call all of the life cycle methods for all of the grids
-    pub fn update_lifecycles(&mut self) {
-        increase_population(&mut self.population_grid, &self.zone_grid);
-    }
-
     pub fn money(&self) -> u64 {
         self.player_money
     }
+
+    fn increase_population(&mut self) {
+        let pop_grid = &mut self.population_grid;
+        let zone_grid = &self.zone_grid;
+        let pop_count = pop_grid.population_count();
+        let pop_increase = 2 + (pop_count as f64 * 0.05) as u64;
+        let mut rng = rand::thread_rng();
+        // Only residential for now. 
+        let residential = zone_grid.get_zone_residential();
+        for _ in 0..pop_increase {
+            let index_opt = rng.choose(&residential);
+            if let Some(index) = index_opt {
+                // @Robust: use get_zone method
+                if let Some(zone) = pop_grid.zones.get_mut(*index) {
+                    if *zone < MAX_ZONE_POPULATION {
+                        *zone += 1;
+                    } 
+                }
+            }
+        }
+
+    }
+
+    fn collect_tax(&mut self) {
+        if self.time % 10 == 0 {
+            let tax: f64 = self.population_grid.population_count() as f64 * (self.tax_rate + 1.0);
+            self.player_money += tax.round() as u64;
+        }
+        println!("$$$ {}", self.player_money);
+    }
+
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -243,25 +275,7 @@ impl ZoneGrid {
 
 }
 
-fn increase_population(pop_grid: &mut PopulationGrid, zone_grid: &ZoneGrid) {
-    let pop_count = pop_grid.population_count();
-    let pop_increase = 2 + (pop_count as f64 * 0.05) as u64;
-    let mut rng = rand::thread_rng();
-    // Only residential for now. 
-    let residential = zone_grid.get_zone_residential();
-    for _ in 0..pop_increase {
-        let index = rng.choose(&residential);
-        if let Some(e) = index {
-            // @Robust: use get_zone method
-            if let Some(z) = pop_grid.zones.get_mut(*e) {
-                if *z < MAX_ZONE_POPULATION {
-                    *z += 1;
-                } 
-            }
-        }
-    }
 
-}
 
 #[cfg(test)]
 mod tests {

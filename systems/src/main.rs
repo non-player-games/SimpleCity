@@ -171,8 +171,7 @@ fn listen(){
             if let Some(ref mut sim_manager) = *sim_manager {
                 let mut game_paused = game_paused_mutex.lock().unwrap();
                 if !*game_paused { 
-                    sim_manager.update_lifecycles();
-                    sim_manager.advance_time(); 
+                    sim_manager.next_tick(); 
                 }
             }
 
