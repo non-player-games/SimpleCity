@@ -119,7 +119,6 @@ impl SimulationManager {
             let tax: f64 = self.population_grid.population_count() as f64 * (self.tax_rate + 1.0);
             self.player_money += tax.round() as u64;
         }
-        println!("$$$ {}", self.player_money);
     }
 
 
