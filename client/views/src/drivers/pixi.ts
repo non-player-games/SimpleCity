@@ -74,27 +74,45 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
                     producer.emit(clickEventName, {i, j});
                 });
                 drawPopulationText(i, j, state.population[i][j]);
-                drawRect(i, j, state.zones[i][j]);
+                drawRect(i, j, state.zones[i][j], state.zones);
             }
         }
     }
 
-    function drawRect(i: number, j: number, t: number): void {
+    function drawRect(i: number, j: number, t: number, zonesState: number[][]): void {
         // avoid redraw when the zone grid hasn't changed
-        if (rectGrid[i][j].zoneType === t) {
+        if (
+            getGridValueSafe(rectGrid, i, j).zoneType === t &&
+            (
+                getGridValueSafe(rectGrid, i - 1, j) !== null &&
+                getGridValueSafe(rectGrid, i - 1, j).zoneType === getGridValueSafe(zonesState, i - 1, j)
+            ) &&
+            (
+                getGridValueSafe(rectGrid, i, j - 1) !== null &&
+                getGridValueSafe(rectGrid, i, j - 1).zoneType === getGridValueSafe(zonesState, i, j - 1)
+            )
+        ) {
             return;
         }
         const color = zoneColors[t];
         const rectangle = rectGrid[i][j];
-        // clear out the old style before redraw
+        // if the above or left zone is the same as current one, don't draw padding
+        // in between to "merge zones"
+        const isLeftTheSame = getGridValueSafe(zonesState, i, j - 1) === getGridValueSafe(zonesState, i, j);
+        const isAboveTheSame = getGridValueSafe(zonesState, i - 1, j) === getGridValueSafe(zonesState, i, j);
+        const x = j * (rectSize + rectPadding);
+        const y = i * (rectSize + rectPadding);
+        const renderedWidth = isLeftTheSame ?
+            rectSize + rectPadding : rectSize;
+        const renderedHeight = isAboveTheSame ?
+            rectSize + rectPadding : rectSize;
+        // clear out the old style before redraw or other wise will not "update"
         rectangle.clear();
         rectangle.beginFill(color);
         if (color === zoneColors[ZoneType.NONE]) {
             rectangle.lineStyle(2, whiteColor);
         }
-        rectangle.drawRect(0, 0, rectSize, rectSize);
-        rectangle.x = j * (rectSize + rectPadding);
-        rectangle.y = i * (rectSize + rectPadding);
+        rectangle.drawRect(x, y, renderedWidth, renderedHeight);
         rectangle.interactive = true;
         rectangle.buttonMode = true;
         rectGrid[i][j].zoneType = t;
@@ -105,10 +123,17 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
             return;
         }
         const text = populationGrid[i][j];
-        console.log("updating text", i, j, p);
-        text.text = `${p}`;
+        text.text = (rectGrid[i][j].zoneType !== 0 && rectGrid[i][j].zoneType !== 1) ? `${p}` : "";
         text.x = j * (rectSize + rectPadding) + rectPadding * 2;
         text.y = i * (rectSize + rectPadding) + rectPadding * 2;
+    }
+
+    // getGridValueSafe returns the grid value if it exist or return null
+    function getGridValueSafe(grid: any[][], i: number, j: number): any {
+        if (i >= 0 && i < grid.length && j >= 0 && j < grid[i].length) {
+            return grid[i][j];
+        }
+        return null;
     }
 
     function updateChart(data: State): void {
@@ -117,7 +142,7 @@ export function makePixiDriver(): (m: MemoryStream<Input>) => Sink {
         }
         data.zones.forEach((row, i) => {
             row.forEach((t, j) => {
-                drawRect(i, j, t);
+                drawRect(i, j, t, [[]]);
             });
         });
         data.population.forEach((row, i) => {
