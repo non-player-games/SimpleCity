@@ -289,7 +289,6 @@ impl ZoneGrid {
 
             if z == &Zone::Road {
                 // new district
-                eprintln!("Checking {}", i);
                 let mut roads_to_visit: VecDeque<usize> = VecDeque::new();
                 roads_to_visit.push_back(i);
                 let mut district: HashSet<usize> = HashSet::new();
@@ -299,7 +298,6 @@ impl ZoneGrid {
                     // to get all the adjacent of the adjacent
                     let current = roads_to_visit.pop_front().unwrap();
                     let adj_zones = self.adjacent_zones(current);
-                    eprintln!("Current: {}, adjacent: {:?}", current, &adj_zones);
                     for adj_z_index in adj_zones {
                         let zone_type = &self.zones[adj_z_index];
                         if !visited.contains(&adj_z_index) && zone_type == &Zone::Road {
@@ -308,7 +306,6 @@ impl ZoneGrid {
                             visited.insert(adj_z_index);
                         }
                     }
-                    eprintln!("Roads to visit: {:?}", &roads_to_visit);
 
                 }
                 districts.push(district);
@@ -336,9 +333,8 @@ impl ZoneGrid {
 
     fn adjacent_zones(&self, index: usize) -> Vec<usize>{
         let width = self.size.x;
-        let height = self.size.y;
         let mut adjacent: Vec<usize> = Vec::new();
-        if index >= width || index >= height{
+        if index >= self.zones.len() {
             return adjacent;
         }
         let above_index: isize = index as isize - width as isize;
@@ -359,7 +355,6 @@ impl ZoneGrid {
         if index % width != width - 1 {
             adjacent.push(index + 1);
         }
-        eprintln!("{} is adjacent to {:?}", index, &adjacent);
         adjacent
     }
 
