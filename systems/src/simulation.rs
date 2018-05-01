@@ -3,6 +3,7 @@ extern crate serde_json;
 
 use rand;
 use rand::Rng;
+use std::collections::{HashSet, VecDeque};
 use std::fmt;
 use std::mem;
 
@@ -85,6 +86,8 @@ impl SimulationManager {
         if was_zone_set {
             self.player_money -= cost;
         }
+        // TEMP
+        self.zone_grid.district();
         return was_zone_set;
     }
 
@@ -270,6 +273,94 @@ impl ZoneGrid {
 
         let road: Option<Zone> = Some(Zone::Road);
         above == road || below == road || left == road || right == road
+    }
+
+    pub fn district(&self) -> Vec<HashSet<usize>> {
+        // We need to collect all the adjacent roads into districts
+        let mut visited: HashSet<usize> = HashSet::new();
+        let mut districts: Vec<HashSet<usize>> = Vec::new();
+
+        for (i, z) in self.zones.iter().enumerate(){
+            if visited.contains(&i){ 
+                continue; 
+            }
+            // questionable?
+            visited.insert(i);
+
+            if z == &Zone::Road {
+                // new district
+                eprintln!("Checking {}", i);
+                let mut roads_to_visit: VecDeque<usize> = VecDeque::new();
+                roads_to_visit.push_back(i);
+                let mut district: HashSet<usize> = HashSet::new();
+                district.insert(i);
+                while roads_to_visit.len() > 0 {
+                    // Normally, we might put this into a recursive call
+                    // to get all the adjacent of the adjacent
+                    let current = roads_to_visit.pop_front().unwrap();
+                    let adj_zones = self.adjacent_zones(current);
+                    eprintln!("Current: {}, adjacent: {:?}", current, &adj_zones);
+                    for adj_z_index in adj_zones {
+                        let zone_type = &self.zones[adj_z_index];
+                        if !visited.contains(&adj_z_index) && zone_type == &Zone::Road {
+                            roads_to_visit.push_back(adj_z_index);
+                            district.insert(adj_z_index);
+                            visited.insert(adj_z_index);
+                        }
+                    }
+                    eprintln!("Roads to visit: {:?}", &roads_to_visit);
+
+                }
+                districts.push(district);
+                // put all into districts
+            }
+        }
+        // DEBUG
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("DEBUGGIN");
+            for (i, d) in districts.iter().enumerate() {
+                eprintln!("{}: {:?}", i, d);
+            }
+            for (i, e) in self.zones.iter().enumerate() {
+                let width = self.size.x;
+                if i % width == 0 { 
+                    eprint!("\n"); 
+                }
+                eprint!("{:?}\t", e);
+            }
+        }
+
+        districts
+    }
+
+    fn adjacent_zones(&self, index: usize) -> Vec<usize>{
+        let width = self.size.x;
+        let height = self.size.y;
+        let mut adjacent: Vec<usize> = Vec::new();
+        if index >= width || index >= height{
+            return adjacent;
+        }
+        let above_index: isize = index as isize - width as isize;
+        if above_index >= 0 { 
+            adjacent.push(above_index as usize); 
+        }
+
+        let below_index: usize = index + width;
+        if below_index < self.zones.len() {
+            adjacent.push(below_index);
+        };
+        
+
+        if index % width != 0 {
+            adjacent.push(index - 1);
+        }
+
+        if index % width != width - 1 {
+            adjacent.push(index + 1);
+        }
+        eprintln!("{} is adjacent to {:?}", index, &adjacent);
+        adjacent
     }
 
 }
