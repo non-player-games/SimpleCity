@@ -278,7 +278,7 @@ impl ZoneGrid {
     pub fn district(&self) -> Vec<HashSet<usize>> {
         // We need to collect all the adjacent roads into districts
         let mut visited: HashSet<usize> = HashSet::new();
-        let mut districts: Vec<HashSet<usize>> = Vec::new();
+        let mut road_districts: Vec<HashSet<usize>> = Vec::new();
 
         for (i, z) in self.zones.iter().enumerate(){
             if visited.contains(&i){ 
@@ -308,15 +308,15 @@ impl ZoneGrid {
                     }
 
                 }
-                districts.push(district);
-                // put all into districts
+                road_districts.push(district);
+                // put all into road_districts
             }
         }
         // DEBUG
         #[cfg(debug_assertions)]
         {
-            eprintln!("DEBUGGIN");
-            for (i, d) in districts.iter().enumerate() {
+            eprintln!("DEBUGGIN ROAD DISTRICT");
+            for (i, d) in road_districts.iter().enumerate() {
                 eprintln!("{}: {:?}", i, d);
             }
             for (i, e) in self.zones.iter().enumerate() {
@@ -324,11 +324,38 @@ impl ZoneGrid {
                 if i % width == 0 { 
                     eprint!("\n"); 
                 }
-                eprint!("{:?}\t", e);
+                eprint!("{}\t", e);
+            }
+            eprintln!("");
+        }
+
+        // compute non roads that are part of the district
+        let mut districts: Vec<HashSet<usize>> = Vec::new();
+        for (_, road_district) in road_districts.iter().enumerate() {
+            let mut district: HashSet<usize> = HashSet::new();
+            for road in road_district {
+                let adj = self.adjacent_zones(*road);
+                for a in adj {
+                    let zone_type = &self.zones[a];
+                    if *zone_type != Zone::Empty {
+                        district.insert(a);
+                    }
+                }
+                district.insert(*road);
+            }
+            districts.push(district);
+        }
+
+        // DEBUG
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("DEBUGGIN DISTRICT");
+            for (i, d) in districts.iter().enumerate() {
+                eprintln!("{}: {:?}", i, d);
             }
         }
 
-        districts
+        road_districts
     }
 
     fn adjacent_zones(&self, index: usize) -> Vec<usize>{
@@ -468,3 +495,15 @@ enum_number!(Zone {
     Commercial  = 3,
     Industrial  = 4,
 });
+
+impl fmt::Display for Zone {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Zone::Empty => write!(f, "EMP"),
+            Zone::Road => write!(f, "ROA"),
+            Zone::Residential => write!(f, "RES"),
+            Zone::Commercial => write!(f, "COM"),
+            Zone::Industrial => write!(f, "IND"),
+        }
+    }
+}
